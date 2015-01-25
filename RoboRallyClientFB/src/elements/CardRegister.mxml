@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 width="{height}"
+		 creationComplete="init()"
+		 height="100%">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import elements.Card;
+			import flash.display.Bitmap;
+			import spark.components.Group;
+			import spark.components.HGroup;
+			import spark.components.Image;
+			import views.play.PlayView3;
+			
+			import flash.events.MouseEvent;
+			
+			import models.data.CardData;
+			
+			import mx.graphics.BitmapFill;
+			
+			import views.play.PlayView;
+			public var card:Card;
+			private var hasCard:Boolean;
+			private var playView:PlayView3;
+			private var _locked:Boolean = false;
+			
+			[Embed(source="assets/locked.png")]
+			private var lockedClass:Class;
+			
+			
+			[Embed(source="assets/damageBG.png")]
+			private var damageClass:Class;
+			[Bindable]
+			
+			private var damageBitmap:Bitmap = new damageClass();
+			[Bindable]
+			private var lockedBitmap:Bitmap = new lockedClass();
+			
+			[Embed(source="assets/cardSpace1.png")]
+			private var card1Class:Class;
+			private var card1Image:Bitmap = new card1Class;
+			[Embed(source="assets/cardSpace2.png")]
+			private var card2Class:Class;
+			private var card2Image:Bitmap = new card2Class;
+			[Embed(source="assets/cardSpace3.png")]
+			private var card3Class:Class;
+			private var card3Image:Bitmap = new card3Class;
+			[Embed(source="assets/cardSpace4.png")]
+			private var card4Class:Class;
+			private var card4Image:Bitmap = new card4Class;
+			[Embed(source="assets/cardSpace5.png")]
+			private var card5Class:Class;
+			private var card5Image:Bitmap = new card5Class;
+
+			
+			public function init():void
+			{
+				if (parent.parent.parent.parent.parent.parent.parent.parent.parent is PlayView3)
+				{
+					playView = parent.parent.parent.parent.parent.parent.parent.parent.parent as PlayView3
+				}
+				else
+				{
+					playView = parent.parent.parent.parent.parent.parent.parent as PlayView3;
+				}
+				setImage();
+				this.addEventListener(MouseEvent.CLICK, onRegisterClick);
+			}
+			
+			private function setImage():void
+			{
+				switch (id)
+				{
+					case "one": 
+						background.source = card1Image;
+						break;
+					case "two": 
+						background.source = card2Image;
+						break;
+					case "three": 
+						background.source = card3Image;
+						break;
+					case "four": 
+						background.source = card4Image;
+						break;
+					case "five": 
+						background.source = card5Image;
+						break;
+				}
+				
+			}
+			
+			private function onRegisterClick(e:MouseEvent):void
+			{
+				
+				if (playView.selectedCard != null)
+				{
+					if(!damageImage.visible){
+						placeCard(playView.selectedCard);
+					}
+				
+				}
+				if (parent is HGroup)
+					return;
+				playView.sortToFront(this);
+			}
+			
+			public function placeCard(selectedCard:Card):void
+			{
+				if (card != null)
+				{
+					//TODO should switch other card to empty spot
+				}
+				else
+				{
+					selectedCard.removeFromRegister();
+					hasCard = true;
+					card = selectedCard;
+					card.cardRegister = this;
+					cardContainer.addElement(selectedCard);
+				}
+				
+				restore();
+			}
+			
+			public function addCard(cardData:CardData):void
+			{
+				card = new Card();
+				card.setData(cardData, this, playView);
+				cardContainer.addElement(card);
+				
+				hasCard = true;
+			}
+			
+			public function glowClick():void 
+			{
+				glow.color = 0xFFFF00;
+				glow.blurX = 30;
+				glow.blurY = 30;
+				glow.alpha = 0.5;
+				tutorial.visible = true;
+				
+			}
+			
+			public function restore():void 
+			{
+				glow.alpha = 0;
+				tutorial.visible = false;
+			}
+			
+			public function removeCard():void
+			{
+				if (locked)
+					return;
+				hasCard = false;
+				if (card != null)
+				{
+					
+					if (cardContainer.contains(card))
+					{
+						cardContainer.removeElement(card);
+					}
+				}
+				card = null;
+			}
+			
+			public function get locked():Boolean
+			{
+				return _locked;
+			}
+			
+			public function set locked(value:Boolean):void
+			{
+				_locked = value;
+				if (card != null)
+				{
+					card.locked = _locked;
+				}
+				
+				if (_locked)
+				{
+					lockedImage.visible = true;
+				}
+				else
+				{
+					lockedImage.visible = false
+				}
+			
+			}
+			
+			public function addDmgBackground(bool:Boolean):void 
+			{
+				damageImage.visible = bool;
+				
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	<s:filters>
+		<s:GlowFilter alpha="0" id="glow" blurX="10" strength="5" inner="true" blurY="10">
+			
+		</s:GlowFilter>
+	</s:filters>
+	
+	<s:Rect width="100%"
+			height="100%">
+		<s:fill>
+			<s:BitmapFill id="background"
+						  source="@Embed(source='assets/cardBG.png')">
+			</s:BitmapFill>
+		</s:fill>
+	</s:Rect>
+	
+	
+	<s:Group  id="cardContainer" width="100%" height="100%"></s:Group>
+	
+	
+	<s:Image id="damageImage" visible="false" source="{damageBitmap}" width="100%" height="100%"></s:Image>
+	
+	<s:Image id="lockedImage" visible="false" source="{lockedBitmap}" width="100%" height="100%"></s:Image>
+	
+	<s:Label id="tutorial"
+			 verticalCenter="0"
+			 horizontalCenter="0"
+			 text="Click"
+			 textAlign="center"
+			 color="0xFFFF00"
+			 fontSize="30"
+			 visible="false"
+			 
+			>
+	</s:Label>
+</s:Group>

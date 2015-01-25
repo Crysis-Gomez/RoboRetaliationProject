@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+
+	 ADOBE SYSTEMS INCORPORATED
+	 Copyright 2008 Adobe Systems Incorporated
+	 All Rights Reserved.
+
+	 NOTICE: Adobe permits you to use, modify, and distribute this file
+	 in accordance with the terms of the license agreement accompanying it.
+
+-->
+
+<!--- The default skin class for the Spark Button component.
+
+	 @see spark.components.Button
+
+	 @langversion 3.0
+	 @playerversion Flash 10
+	 @playerversion AIR 1.5
+	 @productversion Flex 4
+-->
+<s:SparkButtonSkin xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:fb="http://ns.adobe.com/flashbuilder/2009"
+				   minWidth="21"
+				   minHeight="21">
+
+	<fx:Metadata>
+		<![CDATA[ 
+		/** 
+		* @copy spark.skins.spark.ApplicationSkin#hostComponent
+		*/
+		[HostComponent("spark.components.Button")]
+		]]>
+	</fx:Metadata>
+
+	<fx:Script fb:purpose="styling">
+		<![CDATA[
+			
+		]]>
+	</fx:Script>
+
+	<!-- states -->
+	<s:states>
+		<s:State name="up" />
+		<s:State name="over" />
+		<s:State name="down" />
+		<s:State name="disabled" />
+	</s:states>
+
+	<s:Rect includeIn="down,over,up"
+			width="100%"
+			height="100%"
+			radiusX="5"
+			radiusY="5">
+		<s:filters>
+			<s:BevelFilter includeIn="up"
+						   angle="45"
+						   distance="6"
+						   highlightColor="0x898989"
+						   strength="1"
+						   highlightAlpha="1"
+						   shadowAlpha="1"
+						   blurX="5"
+						   blurY="5"
+						   quality="3">
+
+			</s:BevelFilter>
+			<s:BevelFilter includeIn="down,over"
+						   angle="225"
+						   distance="6"
+						   highlightColor="0x898989"
+						   strength="1"
+						   highlightAlpha="1"
+						   shadowAlpha="1"
+						   blurX="5"
+						   blurY="5"
+						   quality="3">
+
+			</s:BevelFilter>
+		</s:filters>
+		<s:fill>
+			<s:SolidColor color="0x323232">
+
+			</s:SolidColor>
+		</s:fill>
+	</s:Rect>
+
+	<s:Image includeIn="down,over,up"
+			 width="40"
+			 height="120"
+			 horizontalCenter="0"
+			 verticalCenter="0"
+			 source="@Embed('assets/ArrowLeft.png')">
+	</s:Image>
+
+</s:SparkButtonSkin>

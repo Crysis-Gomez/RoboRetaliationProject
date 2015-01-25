@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base:PropertiesElement xmlns:fx="http://ns.adobe.com/mxml/2009"
+						xmlns:s="library://ns.adobe.com/flex/spark"
+						xmlns:mx="library://ns.adobe.com/flex/mx"
+						xmlns:base="maps.tools.properties.base.*"
+						width="200" height="100" cornerRadius="20">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import flash.events.Event;
+			import maps.elements.base.BoardElement;
+			//import maps.elements.conveyorbelt.Conveyorbeltcorners;
+			import maps.Node;
+			import maps.tools.MapEditingTools;
+
+			import spark.events.TextOperationEvent;
+			//private var conveyorBelt:Conveyorbeltcorners;
+			private var node:Node;
+			
+			
+			protected function onCheckboxWalls(event:Event):void 
+			{
+				switch (event.currentTarget) 
+				{
+					case cbDown:
+						
+						node.resolveWalls("down",cbDown.selected);
+						   
+					break;
+					
+					case cbUp:
+						node.resolveWalls("up",cbUp.selected);
+					break;
+					
+					
+					case cbRight:
+						node.resolveWalls("right",cbRight.selected);
+					break;
+					
+					case cbLeft:
+						 node.resolveWalls("left",cbLeft.selected);
+					break;
+					default:
+				}
+				
+				
+			}
+			
+			protected function onCheckBoxLasers(event:Event):void 
+			{
+
+				switch (event.currentTarget) 
+				{
+					case laserLeft:
+							node.resolveLasers("left", laserLeft.selected);
+					break;
+					
+					case laserRight:
+						node.resolveLasers("right", laserRight.selected);
+					break;
+					
+					
+					case laserUp:
+						node.resolveLasers("up", laserUp.selected);
+					break;
+					
+					case laserDown:
+						node.resolveLasers("down", laserDown.selected);
+					break;
+					default:
+				}
+				
+			}
+			
+			public function setData(node:Node):void 
+			{
+				this.node = node;
+				cbLeft.selected = node.hasWallLeft;
+				cbRight.selected = node.hasWallRight;
+				cbUp.selected = node.hasWallUp;
+				cbDown.selected = node.hasWallDown;
+				
+				cbLeft.visible = cbRight.visible = cbUp.visible = cbDown.visible = MapEditingTools.mayPutWalls;
+				if (MapEditingTools.mayPutLasers) {
+					
+					laserLeft.visible = cbLeft.selected;
+					laserRight.visible = cbRight.selected;
+					laserUp.visible = cbUp.selected;
+					laserDown.visible = cbDown.selected;
+					
+					laserLeft.selected = node.hasLaserLeft;
+					laserRight.selected = node.hasLaserRight;
+					laserUp.selected = node.hasLaserUp;
+					laserDown.selected = node.hasLaserDown;
+					
+				}else {
+					laserLeft.visible = laserRight.visible = laserUp.visible = laserDown.visible = MapEditingTools.mayPutLasers;
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<s:CheckBox id="cbLeft"  x="10" y="5" width="100" height="50" label="left" change="onCheckboxWalls(event)" />
+	<s:CheckBox id="cbRight" x="10" y="20" width="100" height="50" label="right"   change="onCheckboxWalls(event)" />	
+	<s:CheckBox id="cbUp" x="60" y="5" width="100" height="50" label="up"  change="onCheckboxWalls(event)" />	
+	<s:CheckBox id="cbDown" x="60" y="20" width="100" height="50" label="down"  change="onCheckboxWalls(event)" />	
+	
+	<s:CheckBox id="laserLeft"  x="10" y="5" width="100" height="50" label="left laser" change="onCheckBoxLasers(event)" />
+	<s:CheckBox id="laserRight" x="10" y="20" width="100" height="50" label="right laser"   change="onCheckBoxLasers(event)" />	
+	<s:CheckBox id="laserUp" x="100" y="5" width="100" height="50" label="up laser"  change="onCheckBoxLasers(event)" />	
+	<s:CheckBox id="laserDown" x="100" y="20" width="100" height="50" label="down laser"  change="onCheckBoxLasers(event)" />	
+	
+</base:PropertiesElement>

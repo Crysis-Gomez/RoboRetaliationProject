@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   
+				   width="60"
+				   height="60"
+				   
+				   >
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import core.Game;
+			import flash.display.Bitmap;
+			import flash.events.Event;
+			import flash.events.MouseEvent;
+			import flash.geom.Point;
+			import gui.player.PlayerElement;
+			import models.data.CardData;
+			import models.data.CardsData;
+			
+			public var data:CardData;
+			private var status:String = "notVisible";
+			private var point:Point;
+			private var speed:Number = 10;
+			private var velX:Number = 0;
+			private var velY:Number = 0;
+			private var player:PlayerElement;
+	
+			
+			[Embed(source = "assets/CardDown1.png")] private var cardDownClass:Class;
+			private var cardDown:Bitmap = new cardDownClass();
+			[Embed(source = "assets/CardLeft.png")] private var cardLeftClass:Class;
+			private var cardLeft:Bitmap = new cardLeftClass();
+			[Embed(source = "assets/CardRight.png")] private var cardRightClass:Class;
+			private var cardRight:Bitmap = new cardRightClass();
+			[Embed(source = "assets/CardTurn.png")] private var cardTurnClass:Class;
+			private var cardTurn:Bitmap = new cardTurnClass();
+			[Embed(source = "assets/CardUp1.png")] private var cardUp1Class:Class;
+			private var cardUp1:Bitmap = new cardUp1Class();
+			[Embed(source = "assets/CardUp2.png")] private var cardUp2Class:Class;
+			private var cardUp2:Bitmap = new cardUp2Class();
+			[Embed(source = "assets/CardUp3.png")] private var cardUp3Class:Class;
+			private var cardUp3:Bitmap = new cardUp3Class();
+			private var showCardFinished:Function;
+			private var index:int;
+			
+			private function onUpdate(e:Event):void 
+			{
+				if(status == "visible"){	
+					//this.x += velX;
+					//this.y += velY;
+					//moveToMiddel();
+					changeScale();
+				}
+				
+			}
+			
+			
+			public function showBack():void 
+			{
+				image.visible = false;
+			}
+			
+		
+			public function fadeOut():void 
+			{
+				this.alpha -= 0.01;
+				
+			}
+			
+			
+			public function show(data:CardData, showCardFinished:Function, index:int,player:PlayerElement):void 
+			{
+				this.data = data;
+				this.index = index;
+				this.showCardFinished = showCardFinished;
+				this.player = player;
+				status = "visible";
+				this.visible = true;
+				priority.cacheAsBitmap = true;
+				image.cacheAsBitmap = true;
+				cacheAsBitmap = true;
+				priority.source = CardsData.priorities[(data.priority / 10)];
+				
+				addEventListener(Event.ENTER_FRAME, onUpdate);
+				switch(data.action) {
+					case "forward":
+						switch (data.amount) {
+							case 1:
+								image.source = cardUp1;
+								break;
+							case 2:
+								image.source = cardUp2;
+								break;
+							case 3:
+								image.source = cardUp3;
+								break;
+						}
+						break;
+					case "back":
+						image.source = cardDown;
+						break;
+					case "rotate":
+					switch (data.amount) {
+							case 90:
+								image.source = cardRight;
+								break;
+							case -90:
+								image.source = cardLeft;
+								break;
+							case 180:
+								image.source = cardTurn;
+								break;
+						}
+						break;
+				}
+			}
+			
+			
+			public function changeScale():void 
+			{
+				if (width < 3 * 40 && height < 3 * 60) {
+					if (this.height > 80) fadeOut();
+					this.width 	+= 2;
+					this.height += 2;
+				}else {
+					if ((parent as Game).contains(this)) {
+						(parent as Game).removeElement(this);
+					}
+					showCardFinished(data,index);
+					removeEventListener(Event.ENTER_FRAME, onUpdate);
+					
+				}
+			}
+			
+			public function moveToMiddel():void 
+			{
+				point = new Point(screen.width * 0.5 - (this.width*0.5), screen.height * 0.5 -(this.height*0.5)); 
+				var tempPoint:Point = new Point(this.x, this.y);
+				var tempX:Number = point.x - this.x;
+				var tempY:Number = point.y - this.y;
+				var dist:Number = Point.distance(tempPoint, point);
+				velX = tempX / dist * speed;
+				velY = tempY / dist * speed;
+				changeScale();
+				
+				if (dist < 110) {
+					velX = 0;
+					velY = 0;
+					if ((parent as Game).contains(this)) {
+						(parent as Game).removeElement(this);
+					}
+					
+					showCardFinished(data,index);
+					removeEventListener(Event.ENTER_FRAME, onUpdate);
+				}
+				
+			}
+
+				
+		]]>
+	</fx:Script>
+	<s:Label id="label"
+			 verticalCenter="0"
+			 horizontalCenter="0"
+			 width="30"
+			 height="60">
+	</s:Label>
+	<s:Image id="image" height="100%" width="100%">
+		
+	</s:Image>
+	<s:Image id="priority" height="100%" width="100%">
+		
+	</s:Image>
+</s:BorderContainer>

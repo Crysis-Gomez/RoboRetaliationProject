@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:WindowedApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+					   xmlns:s="library://ns.adobe.com/flex/spark"
+					   xmlns:mx="library://ns.adobe.com/flex/mx"
+					   applicationComplete="init()"
+					   showStatusBar="false">
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import flash.display.StageDisplayState;
+			import flash.events.Event;
+			import flash.events.GameInputEvent;
+			import flash.events.IOErrorEvent;
+			import flash.net.URLLoader;
+			import flash.net.URLRequest;
+			import flash.ui.Multitouch;
+			import flash.ui.MultitouchInputMode;
+			import logger.Logger;
+			import logger.LoggerWindow;
+			import models.connection.GameOptions;
+			import server.SocketManager;
+			import spark.components.Window;
+			
+			private var socket:SocketManager;
+			
+			public function init():void
+			{
+				var loggerWindow:LoggerWindow = new LoggerWindow();
+				loggerWindow.open();
+				
+				Logger.getInstance().log("Application started on " + new Date().getTime().toString());
+				
+				GlobalConstants.registerClasses();
+				
+				GameData.loadGameData();
+				AppData.getInstance().setGameOptions(new GameOptions);
+				socket = SocketManager.getInstance();
+				
+				Multitouch.inputMode = MultitouchInputMode.GESTURE;
+				
+				stage.displayState = StageDisplayState.FULL_SCREEN_INTERACTIVE;
+				
+				var game:RoboRally = new RoboRally();
+				socket.setGame(game);
+				addElement(game);
+				
+				if (!GlobalConstants.LOCAL_PLAY) 
+				{
+					var urlLoader:URLLoader = new URLLoader(new URLRequest("http://roboretaliation.robbybraaksma.nl/config.xml"));
+					urlLoader.addEventListener(Event.COMPLETE, onLoadComplete);
+					urlLoader.addEventListener(IOErrorEvent.IO_ERROR, onIOError);
+				}
+				else
+				{
+					Logger.getInstance().log("Game will start in local mode.");
+					socket.initializeServer();
+				} 
+			}
+			
+			private function onIOError(e:IOErrorEvent):void
+			{
+				Logger.getInstance().log("Could not retrieve config file. Starting game in local mode.");
+				socket.initializeServer();
+			}
+			
+			private function onLoadComplete(e:Event):void
+			{
+				Logger.getInstance().log("Retrieved config file.");
+				
+				var receivedXML:XML = XML(e.target.data);
+				GlobalConstants.SERVER_IP = receivedXML.ipadress;
+				socket.initializeServer();
+			}
+			
+			private function setFullScreen():void
+			{
+			
+			}
+		]]>
+	</fx:Script>
+</s:WindowedApplication>

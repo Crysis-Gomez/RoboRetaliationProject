@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 width="500"
+		 height="150"
+		 creationComplete="init()"
+		 enterFrame="update()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+import flash.display.BlendMode;
+import flash.display.Sprite;
+import flash.filters.BitmapFilterQuality;
+import screens.Playscreen;
+
+
+			private var selectionDestiny:Number;
+			private var selectionPosition:Number;
+			
+			public function init():void
+			{
+				selectionRect.graphics.beginFill(0xFF0000);
+				selectionRect.graphics.drawRect(0, 0, 220, 27);
+				selectionRect.graphics.endFill();
+				selectionRect.blendMode = BlendMode.LAYER;
+				
+				var sprite:Sprite = new Sprite();
+				sprite.x = 2;
+				sprite.y = 2;
+				sprite.blendMode = BlendMode.ERASE;
+				sprite.graphics.beginFill(0x000000);
+				sprite.graphics.drawRect(0, 0, 216, 23);
+				sprite.graphics.endFill();
+				selectionRect.addChild(sprite);
+			}
+			
+			protected function update():void
+			{
+				switch (Playscreen.gameStatus)
+				{
+					case 0: 
+						selectionDestiny = -4;
+						phaseDisplay.text = "0";
+						roundDisplay.text = Playscreen.playedRounds.toString();
+						break;
+					case 1: 
+						selectionDestiny = 22;
+						break;
+					case 2:
+						selectionDestiny = 48;
+						break;
+					case 3:
+						selectionDestiny = 74;
+						break;
+					case 4:
+						selectionDestiny = 100;
+						break;
+				}
+				if (selectionDestiny != -4) {
+					lockCardsLable.setStyle("color", "0x555555");
+				}
+				else {
+					lockCardsLable.setStyle("color", "0xF2B522");
+				}
+				
+				if (int(selectionRect.top) < selectionDestiny) {
+					selectionRect.top = (int(selectionRect.top) + 1).toString();
+				}
+				else {
+					selectionRect.top = selectionDestiny.toString();
+				}
+			}
+		]]>
+	</fx:Script>
+	<s:Rect left="0"
+			height="100%"
+			right="0"
+			bottomLeftRadiusX="-100"
+			bottomLeftRadiusY="100"
+			bottomRightRadiusX="-100"
+			bottomRightRadiusY="100"
+			topLeftRadiusX="20"
+			topLeftRadiusY="20"
+			topRightRadiusX="20"
+			topRightRadiusY="20">
+		<s:fill>
+			<mx:SolidColor color="0x555555">
+			</mx:SolidColor>
+		</s:fill>
+		<s:filters>
+		<s:BevelFilter 	   angle="225"
+						   distance="6"
+						   highlightColor="0x898989"
+						   strength="1"
+						   highlightAlpha="1"
+						   shadowAlpha="1"
+						   blurX="5"
+						   blurY="5"
+						   quality="3">
+
+			</s:BevelFilter>
+			</s:filters>
+	</s:Rect>
+
+
+	<s:HGroup width="100%"
+			  height="100%"
+			  left="10"
+			  right="10"
+			  top="10"
+			  bottom="10">
+
+		<s:VGroup width="25%"
+				  height="100%">
+
+			<s:Label text="ROUND:"
+					 width="100%"
+					 fontSize="28"
+					 textAlign="center"
+					 color="0xF2B522"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+			<s:Label id="roundDisplay"
+					 text="1"
+					 fontSize="80"
+					 width="100%"
+					 height="100%"
+					 textAlign="center"
+					 verticalAlign="middle"
+					 color="0xF2B522"
+					 fontWeight="bold"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+		</s:VGroup>
+
+		<s:Rect width="1"
+				height="100%"
+				horizontalCenter="0"
+				verticalCenter="0">
+			<s:fill>
+				<mx:SolidColor color="0xAAAAAA">
+				</mx:SolidColor>
+			</s:fill>
+		</s:Rect>
+
+		<s:VGroup width="25%"
+				  height="100%">
+			<s:Label text="PHASE:"
+					 fontSize="28"
+					 width="100%"
+					 textAlign="center"
+					 color="0xF2B522"
+					 fontWeight="bold"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+			<s:Label id="phaseDisplay"
+					 text="1"
+					 width="100%"
+					 height="100%"
+					 fontSize="80"
+					 textAlign="center"
+					 verticalAlign="middle"
+					 color="0xF2B522"
+					 fontWeight="bold"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+		</s:VGroup>
+
+		<s:Rect width="1"
+				height="100%"
+				horizontalCenter="0"
+				verticalCenter="0">
+			<s:fill>
+				<mx:SolidColor color="0xAAAAAA">
+				</mx:SolidColor>
+			</s:fill>
+		</s:Rect>
+
+		<s:Group width="50%"
+				 height="100%"
+				 verticalCenter="0"
+				 horizontalCenter="0">
+
+			<s:Label id="lockCardsLable"
+					 text="LOCK CARDS"
+					 height="26"
+					 width="100%"
+					 fontSize="25"
+					 textAlign="center"
+					 color="0xF2B522"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+
+			<s:Label text="ROBOTS MOVE"
+					 top="26"
+					 height="26"
+					 width="100%"
+					 fontSize="25"
+					 textAlign="center"
+					 color="0xF2B522"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+
+			<s:Label text="EXECUTE ITEMS"
+					 top="52"
+					 height="26"
+					 width="100%"
+					 fontSize="25"
+					 textAlign="center"
+					 color="0xF2B522"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+
+			<s:Label text="FACTORY MOVES"
+					 top="78"
+					 height="26"
+					 width="100%"
+					 fontSize="25"
+					 textAlign="center"
+					 color="0xF2B522"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+
+			<s:Label text="LASERS SHOOT"
+					 top="104"
+					 height="26"
+					 width="100%"
+					 fontSize="25"
+					 textAlign="center"
+					 color="0xF2B522"
+					 fontFamily="Nasalization">
+				<s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			</s:Label>
+
+
+			<!-- Rect top= -4,22,48,74,100-->
+			<mx:UIComponent id="selectionRect"
+							horizontalCenter="0"
+							top="-4"
+							width="220"
+							height="27">
+			</mx:UIComponent>
+		</s:Group>
+	</s:HGroup>
+</s:Group>

@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="utf-8"?>
+<core:Game xmlns:fx="http://ns.adobe.com/mxml/2009"
+		   xmlns:s="library://ns.adobe.com/flex/spark"
+		   xmlns:mx="library://ns.adobe.com/flex/mx"
+		   xmlns:core="core.*"
+		   creationComplete="init(event)">
+	<fx:Script>
+		<![CDATA[
+			import adobe.utils.CustomActions;
+			import core.events.GameEvent;
+			import flash.events.Event;
+			import flash.events.MouseEvent;
+			import flash.events.TimerEvent;
+			import flash.utils.Timer;
+			import logger.Logger;
+			import models.connection.GameOptions;
+			import models.connection.GameStarted;
+			import models.connection.GetDamage;
+			import models.connection.PlayerSync;
+			import models.connection.ReceivedCards;
+			import models.data.PlayerData;
+			import notifications.NotificationManager;
+			import notifications.NotificationOption;
+			import screens.*;
+			import utils.CardDeck;
+			import gui.player.PlayerElement;
+			import utils.TutorialManager;
+			
+			import mx.events.FlexEvent;
+			
+			import screens.StartScreen;
+			
+			import server.*;
+			import server.events.*;
+			
+			private var _startable:Boolean;
+			public var clients:Array = new Array();
+			public var playerHuds:Array = new Array();
+			public var started:Boolean;
+			private var timer:Timer;
+		
+			
+			public function set startable(value:Boolean):void
+			{
+				_startable = value;
+			}
+			
+			protected function init(event:FlexEvent):void
+			{
+				addScreen(new StartScreen);
+				//addScreen(new MapSelectionScreen)
+				NotificationManager.getInstance().initialize(this);
+				
+				SocketManager.getInstance().socketHandler.addEventListener(SocketEvent.CLIENT_CONNECTED, onClientConnect);
+				
+				addEventListener(MouseEvent.MOUSE_DOWN, down);
+				addEventListener(MouseEvent.MOUSE_UP, up);
+				
+			}
+			
+			private function up(e:MouseEvent):void
+			{
+				if (timer != null)
+					timer.stop();
+			}
+			
+			private function down(e:MouseEvent):void
+			{
+				timer = new Timer(10000, 1);
+				
+				timer.addEventListener(TimerEvent.TIMER_COMPLETE, function():void
+					{
+						NotificationManager.getInstance().notify("Do you want to exit?", new Array(new NotificationOption("Yes", addNewScreen), new NotificationOption("No", null)));
+						timer.stop();
+					});
+				timer.start();
+			}
+			
+			public function addNewScreen():void
+			{
+				destroy();
+				addScreen(new StartScreen);
+			}
+			
+			public function destroy():void
+			{
+				for each (var huds:PlayerElement in playerHuds)
+				{
+					huds.destroy();
+				}
+				
+				playerHuds = new Array();
+				clients = new Array();
+				started = false;
+				
+				removeCurrentScreen();
+			}
+			
+			protected function onClientConnect(event:SocketEvent):void
+			{
+				clients.push(event.data);
+				gameHandler.dispatchEvent(new GameEvent(GameEvent.PLAYER_CONNECTED, event.data));
+				
+				(event.data as Connection).connectionHandler.addEventListener(ConnectionEvent.PLAYER_DISCONNECT, onPlayerDisconnect);
+			}
+			
+			protected function onPlayerDisconnect(event:ConnectionEvent):void
+			{
+				for (var i:int = 0; i < clients.length; ++i)
+				{
+					var connection:Connection = (clients[i] as Connection);
+					if (connection.connectionID.toString() == event.data as String)
+					{
+						for (var j:int = 0; j < playerHuds.length; j++)
+						{
+							var playerhud:PlayerElement = playerHuds[j];
+							if (playerhud.connection.connectionID == connection.connectionID)
+							{
+								clients.splice(i, 1);
+								playerHuds.splice(i, 1);
+								playerhud.destroy();
+							}
+						}
+					}
+				}
+				checkPlayerCount();
+			}
+			
+			public function checkPlayerCount():void
+			{
+				if (clients.length == 1)
+				{
+					var winScreen:WinScreen = new WinScreen();
+					winScreen.setColor(playerHuds[0].playerData);
+					destroy();
+					addScreen(winScreen);
+				}
+			}
+			
+			public function addPlayerHud(playerElement:PlayerElement):void
+			{
+				playerHuds.push(playerElement);
+			}
+			
+			public function broadCast(type:String):void
+			{
+				switch (type)
+				{
+					case "SyncClient": 
+
+						for each (var aClient4:PlayerElement in playerHuds)
+						{
+
+							var playerSync:PlayerSync = new PlayerSync();
+							playerSync.playerData = aClient4.playerData;
+							aClient4.connection.send(playerSync);
+						}
+						break;
+					case "MapSelected": 
+						var gameStartedMessage:GameStarted = new GameStarted();
+						for each (var aClient:Connection in clients)
+						{
+							aClient.send(gameStartedMessage);
+						}
+						var timer:Timer = new Timer(250, 1);
+						timer.start();
+						timer.addEventListener(TimerEvent.TIMER_COMPLETE, function():void
+							{
+								broadCast("SendGameProperties");
+							});
+						break;
+					case "SendCards": 
+						CardDeck.getInstance().resetCards();
+						
+						var timer3:Timer = new Timer(250, 1);
+						timer3.start();
+						timer3.addEventListener(TimerEvent.TIMER_COMPLETE, function():void
+							{
+								for each (var aClient2:PlayerElement in playerHuds)
+								{
+									
+									trace(GlobalConstants.TUTORIAL_PLAY);
+									
+									if (GlobalConstants.TUTORIAL_PLAY) {
+										
+										aClient2.connection.send(TutorialManager.getInstance().getCards(aClient2));
+										(currentScreen as screens.Playscreen).updateText(aClient2.playerData.stageCount);
+										//(map.game.currentScreen as screens.Playscreen).updateText(playerData.stageCount);
+									  
+									}
+									else {
+										var receivedCards:ReceivedCards = new ReceivedCards();
+										receivedCards.cards = CardDeck.getInstance().getCards(aClient2.playerData);
+										aClient2.connection.send(receivedCards);
+									}
+										
+									
+								}
+							
+							});
+						break;
+					case "SendGameProperties": 
+						var gameOptions:GameOptions = new GameOptions();
+						for each (var aClient3:Connection in clients)
+						{
+							aClient3.send(gameOptions);
+						}
+						var timer2:Timer = new Timer(250, 1);
+						timer2.start();
+						timer2.addEventListener(TimerEvent.TIMER_COMPLETE, function():void
+							{
+								broadCast("SendCards");
+							});
+						break;
+					default: 
+						trace("unsupported broadcast");
+						break;
+				}
+			}
+			
+			public function hideHuds():void {
+				for each(var aHud:gui.player.PlayerElement in playerHuds) {
+					aHud.visible = false;
+				}
+			}
+			
+			public function showHuds():void {
+				for each(var aHud:gui.player.PlayerElement in playerHuds) {
+					aHud.visible = true;
+				}
+			}
+			
+			public function get startable():Boolean
+			{
+				return _startable;
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+</core:Game>

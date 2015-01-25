@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:mx="library://ns.adobe.com/flex/mx"
+		actionBarVisible="false"
+		currentState="start"
+		overlayControls="false"
+		tabBarVisible="false"
+		title="HomeView">
+
+	<fx:Script>
+		<![CDATA[
+			import connection.ConnectionEvent;
+			import connection.SocketConnection;
+			import flash.events.Event;
+			import flash.events.KeyboardEvent;
+			import flash.events.TimerEvent;
+			import flash.utils.Timer;
+			import models.connection.ConnectRequest;
+			
+			
+			protected function connectToBoard(event:MouseEvent):void
+			{
+				currentState = "connecting";
+				connectButton.enabled = false;
+				connectLabel.text = "Connecting...";
+				
+				
+				SocketConnection.getInstance().createConnection();
+				SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.CONNECT_ACCEPTED, onConnectAccepted);
+				SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.CONNECT_DECLINED, onConnectDeclined);
+				SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.CONNECT_FAILED, onConnectFailed);
+				SocketConnection.getInstance().sendData(new ConnectRequest());
+				
+				
+			}
+			
+			public function init():void 
+			{
+				if (navigator == null) {
+					var timer:Timer = new Timer(1000, 1);
+					timer
+				}
+			}
+			
+			
+			
+			protected function onConnectAccepted(event:ConnectionEvent):void
+			{
+				var timer:Timer = new Timer(250);
+				timer.addEventListener(TimerEvent.TIMER,function ():void 
+				{
+					if (navigator != null) {
+						navigator.popView();
+						navigator.pushView(views.RobotView, new Array(event.data, 0));
+						timer.stop();
+					}
+				});
+				timer.start();
+			}
+			
+			protected function onConnectDeclined(event:Event):void
+			{
+				currentState = "connectingfailed";
+				connectButton.enabled = true;
+				connectLabel.text = "Game is full.";
+			}
+			
+			protected function onConnectFailed(event:Event):void
+			{
+				currentState = "connectingfailed";
+				connectButton.enabled = true;
+				connectLabel.text = "Connection failed.";
+			}
+		]]>
+	</fx:Script>
+	<s:states>
+		<s:State name="connecting" />
+		<s:State name="start" />
+		<s:State name="connectingfailed" />
+	</s:states>
+	<!--BACKGROUND-->
+	<s:Rect width="100%"
+			height="100%">
+		<s:fill>
+			<s:BitmapFill source="@Embed(source='assets/bg.jpg')">
+			</s:BitmapFill>
+		</s:fill>
+	</s:Rect>
+	<!--LOGO-->
+	<s:Image source="@Embed(source='assets/logo.png')"
+			 left="20"
+			 right="20"
+			 top="20"
+			 bottom="125" />
+
+	<s:Button id="connectButton"
+			  bottom="50"
+			  width="300"
+			  label="Connect to Board"
+			  click="connectToBoard(event)"
+			  horizontalCenter="0"
+			  skinClass="skins.RobotButton"
+			  height="60" />
+	<s:Group includeIn="connecting, connectingfailed"
+			 bottom="100"
+			 width="200"
+			 height="60"
+			 horizontalCenter="0">
+		<s:Label id="connectLabel"
+				 color="0xFFFFFF"
+				 text="Connecting"
+				 textAlign="center"
+				 verticalAlign="middle"
+				 fontSize="32"
+				 horizontalCenter="0">
+				 <s:filters>
+			<s:GlowFilter 
+						  color="0x000000"
+						  strength="100"
+						  >
+				
+			</s:GlowFilter>
+		</s:filters>
+				 </s:Label>
+	</s:Group>
+
+
+</s:View>

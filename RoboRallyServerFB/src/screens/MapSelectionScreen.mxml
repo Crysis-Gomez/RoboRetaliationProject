@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base:GameScreen xmlns:fx="http://ns.adobe.com/mxml/2009"
+				 xmlns:s="library://ns.adobe.com/flex/spark"
+				 xmlns:mx="library://ns.adobe.com/flex/mx"
+				 xmlns:base="screens.base.*"
+				 xmlns:map="map.*"
+				 xmlns:tools="maps.tools.*"
+				 currentState="selectingMap"
+				 width="100%"
+				 height="100%"
+				 creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<base:states>
+		<s:State name="selectingMap" />
+		<s:State name="editingMap" />
+		<s:State name="testingMap" />
+	</base:states>
+	<fx:Script>
+		<![CDATA[
+			import flash.events.MouseEvent;
+			import flash.events.TransformGestureEvent;
+			import flash.filesystem.File;
+			import maps.Map;
+			import maps.tools.MapEditingTools;
+			import models.data.MapData;
+			import mx.graphics.GradientStroke;
+			import utils.MapLoader;
+			
+			public var map:Map;
+			private var mapIndex:int;
+			
+			private static var screen:MapSelectionScreen;
+			
+			public function init():void
+			{
+				loadMaps();
+				if (!GlobalConstants.MAPEDITABLE)
+				{
+					createMapButton.enabled = false;
+				}
+				if (!GlobalConstants.MAPTESTABLE)
+				{
+					testMapButton.enabled = false;
+				}
+				screen = this;
+			}
+			
+			private function loadMaps():void
+			{
+				GameData.clearMaps();
+				
+				var f:File = File.applicationDirectory.resolvePath("levels/");
+				var filesList:Array = f.getDirectoryListing();
+				if (filesList.length != 0)
+				{
+					var mapLoader:MapLoader = new MapLoader(filesList, mapLoadComplete);
+				}
+				else
+				{
+					trace("No Maps");
+				}
+			}
+			
+			public function mapLoadComplete():void
+			{
+				removeMap();
+				map = new Map();
+				map.setGame(game);
+				map.loadMapData(GameData.maps[0] as MapData);
+				mapContainer.addElementAt(map, 0);
+				leftButton.enabled = false;
+				mapIndex = 0;
+				
+				if (GameData.maps.length == 1)
+				{
+					rightButton.enabled = false;
+				}
+				this.addEventListener(TransformGestureEvent.GESTURE_SWIPE, onMapSwipe);
+			}
+			
+			private function onMapSwipe(e:TransformGestureEvent):void
+			{
+				if (currentState == "selectingMap")
+				{
+					if (e.offsetX == 1)
+					{
+						selectLeft();
+					}
+					if (e.offsetX == -1)
+					{
+						selectRight();
+					}
+				}
+			}
+			
+			public function loadMap(string:String, mode:String):void
+			{
+				removeMap();
+				for (var i:int = 0; i < GameData.maps.length; i++)
+				{
+					
+					var mapData:MapData = GameData.maps[i];
+					if (mapData.name == string)
+					{
+						
+						map = new Map();
+						
+						currentState = mode;
+						if (mode == "testingMap")
+						{
+							testTools.setMap(map);
+						}
+						else if (mode == "editingMap")
+						{
+							map.editable = true;
+							mapTools.setMap(map);
+						}
+						
+						map.loadMapData(GameData.maps[i] as MapData);
+						mapContainer.addElementAt(map, 0);
+						break;
+					}
+					
+				}
+			
+			}
+			
+			public static function getScreen():MapSelectionScreen
+			{
+				return screen;
+			}
+			
+			private function createMap(event:MouseEvent):void
+			{
+				removeMap();
+				map = new Map();
+				map.editable = true;
+				currentState = "editingMap"
+				//Reset map tools ?
+				mapTools.setMap(map);
+				mapContainer.addElementAt(map, 0);
+			}
+			
+			private function removeMap():void
+			{
+				if (map != null)
+				{
+					if (mapContainer.contains(map))
+					{
+						mapContainer.removeElement(map);
+					}
+				}
+			}
+			
+			protected function selectLeft(event:MouseEvent = null):void
+			{
+				if (!leftButton.enabled)
+					return;
+				removeMap();
+				mapIndex--;
+				map = new Map();
+				map.setGame(game);
+				map.loadMapData(GameData.maps[mapIndex] as MapData);
+				mapContainer.addElementAt(map, 0);
+				
+				if (mapIndex == 0)
+				{
+					leftButton.enabled = false;
+				}
+				else
+				{
+					leftButton.enabled = true;
+				}
+				
+				if (mapIndex == GameData.maps.length - 1)
+				{
+					rightButton.enabled = false;
+				}
+				else
+				{
+					rightButton.enabled = true;
+				}
+			
+			}
+			
+			protected function selectRight(event:MouseEvent = null):void
+			{
+				if (!rightButton.enabled)
+					return;
+				removeMap();
+				mapIndex++;
+				
+				map = new Map();
+				map.setGame(game);
+				map.loadMapData(GameData.maps[mapIndex] as MapData);
+				mapContainer.addElementAt(map, 0);
+				
+				if (mapIndex == 0)
+				{
+					leftButton.enabled = false;
+				}
+				else
+				{
+					leftButton.enabled = true;
+				}
+				
+				if (mapIndex == GameData.maps.length - 1)
+				{
+					rightButton.enabled = false;
+				}
+				else
+				{
+					rightButton.enabled = true;
+				}
+			}
+			
+			protected function exitEditingMode(event:MouseEvent):void
+			{
+				
+				game.removeCurrentScreen();
+				game.addScreen(new MapSelectionScreen);
+			}
+			
+			protected function selectMap(event:MouseEvent):void
+			{
+				game.removeCurrentScreen();
+				(game as RoboRally).broadCast("MapSelected");
+				(game as RoboRally).showHuds();
+				var playScreen:Playscreen = new Playscreen();
+				playScreen.setData(mapIndex);
+				game.addScreen(playScreen);
+			}
+			
+			protected function testMap(event:MouseEvent):void
+			{
+				removeMap();
+				map = new Map();
+				map.editable = true;
+				currentState = "testingMap"
+				//Reset map tools ?
+				testTools.setMap(map);
+				mapContainer.addElementAt(map, 0);
+			}
+		]]>
+	</fx:Script>
+
+	<s:Rect width="100%"
+			height="100%">
+		<s:fill>
+			<s:BitmapFill source="@Embed(source='assets/bg.jpg')"
+						  id="bitmapFill"
+						  fillMode="repeat" />
+		</s:fill>
+	</s:Rect>
+
+	<s:BorderContainer id="mapContainer"
+					   left="60"
+					   right="60"
+					   top="60"
+					   bottom="60"
+					   horizontalCenter="0"
+					   verticalCenter="0"
+					   borderWeight="0">
+		<s:backgroundFill>
+			<s:BitmapFill source="@Embed(source='assets/playScreenBG.png')"
+						  id="mapBG" />
+		</s:backgroundFill>
+		<tools:MapEditingTools id="mapTools"
+							   includeIn="editingMap"
+							   x="90"
+							   y="250">
+		</tools:MapEditingTools>
+		<tools:TestTools id="testTools"
+						 includeIn="testingMap"
+						 x="90"
+						 y="250">
+		</tools:TestTools>
+
+		<s:Button includeIn="editingMap, testingMap"
+				  right="20"
+				  bottom="20"
+				  click="exitEditingMode(event)">
+
+		</s:Button>
+
+
+	</s:BorderContainer>
+	<s:Button includeIn="selectingMap"
+			  id="createMapButton"
+			  skinClass="skins.RobotButton"
+			  bottom="120"
+			  width="145"
+			  height="50"
+			  label="Create Map"
+			  click="createMap(event)"
+			  horizontalCenter="-75" />
+	<s:Button id="testMapButton"
+			  includeIn="selectingMap"
+			  bottom="120"
+			  width="145"
+			  height="50"
+			  label="Test Map"
+			  click="testMap(event)"
+			  horizontalCenter="75"
+			  skinClass="skins.RobotButton" />
+	<s:Button includeIn="selectingMap"
+			  skinClass="skins.RobotButton"
+			  top="62"
+			  width="300"
+			  height="50"
+			  label="Select Map"
+			  click="selectMap(event)"
+			  horizontalCenter="0"
+			  rotation="180" />
+	<s:Button includeIn="selectingMap"
+			  skinClass="skins.RobotButton"
+			  bottom="62"
+			  width="300"
+			  height="50"
+			  label="Select Map"
+			  click="selectMap(event)"
+			  horizontalCenter="0" />
+	<s:Button includeIn="selectingMap"
+			  id="leftButton"
+			  skinClass="skins.RobotLeftButton"
+			  left="62"
+			  width="100"
+			  height="400"
+			  label="L"
+			  click="selectLeft(event)"
+			  verticalCenter="0" />
+	<s:Button includeIn="selectingMap"
+			  id="rightButton"
+			  skinClass="skins.RobotRightButton"
+			  click="selectRight(event)"
+			  right="62"
+			  width="100"
+			  height="400"
+			  label="R"
+			  verticalCenter="0" />
+
+
+</base:GameScreen>

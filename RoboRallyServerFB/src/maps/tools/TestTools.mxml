@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:HGroup xmlns:fx="http://ns.adobe.com/mxml/2009"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  width="200"
+		  height="400"
+		  creationComplete="init(event)"
+		  gap="10">
+	<fx:Script>
+		<![CDATA[
+			import maps.elements.player.TestPlayer;
+			import maps.Map;
+			import models.data.MapData;
+			import models.data.PlayerData;
+			import screens.MapSelectionScreen;
+			
+			import mx.events.FlexEvent;
+			
+			static private var instance:TestTools;
+			private var map:Map;
+			
+			private var testPlayers:Array = new Array();
+			private var selectedMap:String;
+			
+			public var selectedPlayer:TestPlayer;
+			
+			public static function getInstance():TestTools
+			{
+				return instance;
+			}
+			
+			protected function init(event:FlexEvent):void
+			{
+				instance = this;
+				loadNames();
+			}
+			
+			protected function load(event:MouseEvent):void
+			{
+				
+				if (selectedMap != " ")
+				{
+					MapSelectionScreen.getScreen().loadMap(selectedMap, "testingMap");
+				}
+			
+			}
+			
+			public function setMap(map:Map):void
+			{
+				this.map = map;
+			
+			}
+			
+			public function loadNames():void
+			{
+				for (var i:int = 0; i < GameData.maps.length; i++)
+				{
+					var map:MapData = GameData.maps[i];
+					array.addItem(map.name);
+					
+				}
+			}
+			
+			public function dropEvt(event:Event):void
+			{
+				selectedMap = "" + event.currentTarget.selectedItem;
+			}
+			
+			
+			protected function addTestPlayer(event:MouseEvent):void
+			{
+				if (testPlayers.length == 8) return;
+				
+				var playerData:PlayerData = new PlayerData();
+				playerData.id = testPlayers.length + 1;
+				playerData.name = "Test Player: " + playerData.id.toString();
+				playerData.robotID = 0;
+				
+				var testPlayer:TestPlayer = new TestPlayer(playerData, this);
+				testPlayers.push(testPlayer);
+				MapSelectionScreen.getScreen().map.addTestPlayer(testPlayer);
+			}
+			
+			protected function startFactory(event:MouseEvent):void
+			{
+				(MapSelectionScreen.getScreen().map as Map).moveFactory(factoryComplete);
+			}
+			
+			public function factoryComplete(registerIndex:int):void 
+			{
+				
+			}
+			
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:BorderContainer width="200"
+					   height="100%"
+					   cornerRadius="20">
+		<s:DropDownList id="drop" x="10" y="10" width="100" close="dropEvt(event)">
+			<mx:ArrayList id="array">
+			
+
+			</mx:ArrayList>
+
+		</s:DropDownList>
+		<s:Button x="120"
+				  y="10"
+				  label="Load"
+				  click="load(event)" />
+		<s:Button y="40" left="10" right="10" label="Add Test Player" click="addTestPlayer(event)"/>
+		<s:Button y="70" left="10" right="10" label="Start Factory" click="startFactory(event)"/>
+	</s:BorderContainer>
+</s:HGroup>

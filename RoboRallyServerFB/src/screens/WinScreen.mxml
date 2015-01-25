@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base:GameScreen xmlns:fx="http://ns.adobe.com/mxml/2009"
+				 xmlns:s="library://ns.adobe.com/flex/spark"
+				 xmlns:mx="library://ns.adobe.com/flex/mx"
+				 xmlns:base="screens.base.*"
+				 width="100%"
+				 height="100%"
+				 clipAndEnableScrolling="true"
+				 creationComplete="init(event)">
+
+	<fx:Script>
+		<![CDATA[
+			import core.events.GameEvent;
+			import models.data.PlayerData;
+			
+			import flash.filters.BitmapFilterQuality;
+			
+			import gui.player.PlayerElement;
+			
+			import mx.events.FlexEvent;
+			
+			import server.*;
+			import server.events.*;
+			
+			private var player:PlayerData;
+			
+			protected function init(event:FlexEvent):void
+			{
+				this.addEventListener(Event.ENTER_FRAME, updateFrame);
+				won.text = player.name + " wins!!!"
+			
+			}
+			
+			public function setColor(player:PlayerData):void
+			{
+				this.player = player;
+				status.color = GlobalConstants.COLORS[player.id - 1];
+			
+			}
+			
+			public function returnGame():void
+			{
+				game.removeCurrentScreen();
+				game.addScreen(new StartScreen);
+			}
+			
+			public function quitGame():void 
+			{
+				//Close application
+			}
+			
+			protected function updateFrame(event:Event):void
+			{
+				
+				gear1.transformX = 175;
+				gear1.transformY = 175;
+				gear1.rotation += 1;
+				
+				gear2.transformX = 175;
+				gear2.transformY = 175;
+				gear2.rotation -= 1;
+				
+				gear3.transformX = 175;
+				gear3.transformY = 175;
+				gear3.rotation += 1;
+				
+				gear4.transformX = 175;
+				gear4.transformY = 175;
+				gear4.rotation -= 1;
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:Rect width="100%"
+			height="100%">
+		<s:fill>
+			<s:BitmapFill source="@Embed(source='assets/bg.jpg')"
+						  id="bitmapFill" />
+		</s:fill>
+	</s:Rect>
+	<s:Image id="gear1"
+			 x="50"
+			 y="-25"
+			 width="350"
+			 height="350"
+			 source="@Embed('assets/Gear.png')" />
+	<s:Image id="gear2"
+			 x="470"
+			 y="35"
+			 width="350"
+			 height="350"
+			 source="@Embed('assets/Gear.png')" />
+	<s:Image id="gear3"
+			 x="1100"
+			 y="695"
+			 width="350"
+			 height="350"
+			 source="@Embed('assets/Gear.png')" />
+	<s:Image id="gear4"
+			 x="1420"
+			 y="755"
+			 width="350"
+			 height="350"
+			 source="@Embed('assets/Gear.png')" />
+
+	<s:Image width="1000"
+			 rotation="0"
+			 source="@Embed(source='assets/logo-Tekst.png')"
+			 verticalCenter="380"
+			 horizontalCenter="480">
+	</s:Image>
+	<s:Image width="1000"
+			 horizontalCenter="-480"
+			 rotation="180"
+			 verticalCenter="-380"
+			 source="@Embed(source='assets/logo-Tekst.png')">
+	</s:Image>
+
+	<s:BorderContainer width="70%"
+					   height="50%"
+					   horizontalCenter="0"
+					   verticalCenter="0"
+					   cornerRadius="20">
+
+		<s:backgroundFill>
+			<s:SolidColor id="status"
+						  color="0xFF0000" />
+		</s:backgroundFill>
+
+
+
+		<s:BorderContainer width="95%"
+						   height="95%"
+						   horizontalCenter="0"
+						   verticalCenter="0"
+						   cornerRadius="20">
+			<s:backgroundFill>
+				<s:BitmapFill source="@Embed(source='assets/metalHullBG.jpg')">
+				</s:BitmapFill>
+			</s:backgroundFill>
+
+			<s:VGroup width="100%"
+					  height="100%"
+					  horizontalAlign="center">
+				<s:Label height="10%"
+						 text="Player 1 has won"
+						 id="won">
+
+				</s:Label>
+			</s:VGroup>
+		</s:BorderContainer>
+		<s:HGroup width="300"
+				  height="50"
+				  verticalCenter="225"
+				  horizontalCenter="0"
+				  horizontalAlign="center">
+
+			<s:Button width="300"
+					  height="50"
+					  label="New Game"
+					  click="returnGame()"
+					  skinClass="skins.RobotButton" />
+			<s:Button width="300"
+					  height="50"
+					  label="Quit Game"
+					  click="quitGame()"
+					  skinClass="skins.RobotButton" />
+
+		</s:HGroup>
+	</s:BorderContainer>
+
+</base:GameScreen>

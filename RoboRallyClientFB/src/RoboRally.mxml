@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:ViewNavigatorApplication xmlns:fx="http://ns.adobe.com/mxml/2009"
+							xmlns:s="library://ns.adobe.com/flex/spark"
+							xmlns:mx="library://ns.adobe.com/flex/mx"
+							firstView="views.RoboRallyClientHomeView"
+							applicationDPI="160"
+						
+							applicationComplete="appComplete(event)"
+							deactivate="onDeactivate(event)"
+							softKeyboardDeactivate="onDeactivate(event)">
+	<fx:Script>
+		<![CDATA[
+			//import com.demonsters.debugger.MonsterDebugger;
+			import connection.ConnectionEvent;
+			import connection.SocketConnection;
+			import flash.desktop.NotificationType
+			import flash.desktop.NativeApplication;
+			import flash.events.KeyboardEvent;
+			import flash.desktop.SystemIdleMode;
+			import flash.ui.Keyboard;
+			import flash.events.Event;
+			import flash.events.IOErrorEvent;
+			import flash.events.KeyboardEvent;
+			import flash.events.MouseEvent;
+			import flash.net.URLLoader;
+			import flash.net.URLRequest;
+			import flash.ui.Keyboard;
+			import flash.ui.Multitouch;
+			import flash.ui.MultitouchInputMode;
+			import mx.events.FlexEvent;
+			import notifications.NotificationManager;
+			import notifications.NotificationOption;
+			import views.RoboRallyClientHomeView;
+		
+
+			protected function appComplete(event:FlexEvent):void
+			{
+				GlobalConstants.registerClasses();
+				
+				GameData.loadGameData();
+				
+				Multitouch.inputMode = MultitouchInputMode.GESTURE;
+				
+				if(!GlobalConstants.LOCAL_PLAY){
+				var urlLoader:URLLoader = new URLLoader(new URLRequest("http://roboretaliation.robbybraaksma.nl/config.xml"));
+				urlLoader.addEventListener(Event.COMPLETE, onLoadComplete);
+				urlLoader.addEventListener(IOErrorEvent.IO_ERROR, onIOError);
+				}
+			
+				
+				NativeApplication.nativeApplication.addEventListener(KeyboardEvent.KEY_DOWN, onMainKeyDown);
+				NativeApplication.nativeApplication.systemIdleMode =  SystemIdleMode.KEEP_AWAKE;
+				
+				NotificationManager.getInstance().initialize(navigator);	
+				
+			}	
+			
+			override protected function backKeyUpHandler(event:KeyboardEvent):void 
+			{
+				//super.backKeyUpHandler(event);
+			}
+			
+			private function onIOError(e:IOErrorEvent):void 
+			{
+				//TODO: No internet connection
+			
+			}
+			
+			private function onMainKeyDown(ke:KeyboardEvent):void
+			{
+				if (ke.keyCode == Keyboard.BACK)
+				{
+					NotificationManager.getInstance().notify("Are you sure, you want to exit", new Array(new NotificationOption("Exit", exitCallBack), new NotificationOption("Cancel", null)));
+
+					ke.preventDefault();
+					ke.stopImmediatePropagation();
+				}
+			}
+			
+			public function exitCallBack():void 
+			{
+				NativeApplication.nativeApplication.exit();
+			}
+			
+			private function onLoadComplete(e:Event):void
+			{
+				var receivedXML:XML = XML(e.target.data);
+				GlobalConstants.SERVER_IP = receivedXML.ipadress;
+			
+			}
+			
+			protected function onDeactivate(event:Event):void
+			{
+				//NativeApplication.nativeApplication.exit();
+				
+			}
+		
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+</s:ViewNavigatorApplication>

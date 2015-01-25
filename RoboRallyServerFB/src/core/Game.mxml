@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009"
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:mx="library://ns.adobe.com/flex/mx"
+		 width="100%"
+		 height="100%"
+		 clipAndEnableScrolling="true">
+		
+	<fx:Script>
+		<![CDATA[
+			import logger.Logger;
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import screens.base.GameScreen;
+			
+			private var screens:ArrayList = new ArrayList();
+			private var _currentScreen:GameScreen;
+			private var _gameHandler:GameHandler = new GameHandler();
+			
+			
+			
+			public function get gameHandler():GameHandler
+			{
+				
+				return _gameHandler;
+			}
+			
+			public function get currentScreen():GameScreen 
+			{
+				return _currentScreen;
+			}
+			
+			public function set currentScreen(value:GameScreen):void 
+			{
+				_currentScreen = value;
+			}
+
+			public function addScreen(screen:GameScreen):void
+			{
+				Logger.getInstance().log("Adding Screen: " + screen);
+				currentScreen = screen;
+				currentScreen.game = this;
+				this.addElementAt(currentScreen,0);
+				screens.addItem(currentScreen);
+			}
+			
+			public function removeCurrentScreen():void
+			{
+				Logger.getInstance().log("Removing Screen: " + screen)
+				this.removeElement(currentScreen);
+				screens.removeItem(currentScreen);
+				if (screens.length == 0) {
+					
+				} else  {
+					currentScreen = screens.getItemAt(screens.length - 1) as GameScreen;
+					currentScreen.game = this;
+					this.addElementAt(currentScreen,0);
+				}
+				
+				
+			}
+			
+			public function removeScreen(screen:GameScreen):void
+			{
+				
+			}
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+</s:Group>

@@ -1,0 +1,555 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base:GameScreen xmlns:fx="http://ns.adobe.com/mxml/2009"
+				 xmlns:s="library://ns.adobe.com/flex/spark"
+				 xmlns:mx="library://ns.adobe.com/flex/mx"
+				 xmlns:base="screens.base.*"
+				 xmlns:screen="gui.screen.*"
+				 creationComplete="init(event)">
+				 
+				 
+				 <fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<s:DropShadowFilter id="dropShaText"
+							distance="1"
+							angle="45"
+							blurX="2"
+							blurY="2"
+							alpha="1"
+							color="0xFFFFFF" />
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+		
+		    
+		
+			import flash.events.Event;
+			import flash.filters.BitmapFilterQuality;
+			import core.events.GameEvent;
+			import core.Game;
+			import elements.Card;
+			import flash.events.MouseEvent;
+			import flash.events.TimerEvent;
+			import flash.geom.Point;
+			import flash.utils.Timer;
+			import gui.player.PlayerElement;
+			import maps.factories.BoardElementFactory;
+			import maps.Map;
+			import maps.Node;
+			import models.connection.GameOptions;
+			import models.connection.PickUpAccept;
+			import models.connection.PickUpRequest;
+			import models.data.CardData;
+			import models.data.MapData;
+			import mx.graphics.SolidColor;
+			import server.events.ConnectionEvent;
+			import spark.primitives.Rect;
+			import utils.CardDeck;
+			import utils.MapLoader;
+			
+			import mx.events.FlexEvent;
+			
+			import server.Connection;
+			
+			//Gamestatus:
+			//0 Lock Cards: Player are choosing cards, game is waiting for them to lock.
+			//1 Robots are moving
+			//2 Items get executed
+			//3 Factory is moving
+			//4 Lasers shoot
+			public static var gameStatus:int = 0;
+			public static var playedRounds:Number = 1;
+			
+			private var mapIndex:int;
+			private var players:Array;
+			private var cardsInRegister:Array;
+			public var map:Map;
+			private var registerIndex:int;
+			private var pickupTimer:Timer;
+			private var itemQue:Array = new Array();
+			private var itemsPlayedCounter:int;
+			public var gameEnded:Boolean;
+			public var rebootCount:int = 0;
+			
+			public var TutorialMode:Boolean = false;
+			
+			protected function init(event:FlexEvent):void
+			{
+				
+				if (GlobalConstants.TUTORIAL_PLAY)
+				{
+					loadMaps();
+					monitor1.visible = false;
+					hideRect1.visible = true;
+					Tutorial.visible = true;
+				}
+				else
+				{
+					
+					map = new Map();
+					map.loadMapData(GameData.maps[mapIndex]);
+					map.setGame(game);
+					mapContainer.addElementAt(map, 0);
+					
+					//TODO: Something with the huds ?
+					Tutorial.visible = false;
+					initHuds();
+				}
+			}
+			
+			private function loadMaps():void
+			{
+				GameData.clearMaps();
+				
+				var mapLoader:MapLoader = new MapLoader(null, mapLoadComplete);
+				mapLoader.loadMapFile("levels/Tutorial.xml");
+			
+			}
+			
+			private function mapLoadComplete():void
+			{
+				map = new Map();
+				map.loadMapData(GameData.maps[0]);
+				map.setGame(game);
+				mapContainer.addElementAt(map, 0);
+				
+				initHuds();
+			
+			}
+			
+			private function initHuds():void
+			{
+				players = (game as RoboRally).playerHuds;
+				
+				for each (var aPlayerHud:PlayerElement in players)
+				{
+					aPlayerHud.activateListeners();
+					map.addPlayer(aPlayerHud);
+					if (GlobalConstants.TUTORIAL_PLAY) {
+						aPlayerHud.visible = false;
+					}
+					
+				}
+				(game as RoboRally).gameHandler.addEventListener(GameEvent.PLAYER_PLAYED_CARDS, onPlayerPlayedCards);
+				
+				//addRect(68, 100, 0, 0,50,50);
+				
+			}
+			
+			private function onPlayerPlayedCards(e:GameEvent):void
+			{
+				for each (var aPlayerHud:PlayerElement in players)
+				{
+					
+					if (!aPlayerHud.ready)
+						return;
+				}
+				
+				startRegister(1);
+			}
+			
+			private function startRegister(registerIndex:Number):void
+			{
+				monitor1.phaseDisplay.text = registerIndex.toString();
+				monitor2.phaseDisplay.text = registerIndex.toString();
+				
+				placePickup();
+				
+				cardsInRegister = new Array();
+				
+				rebootCount = 0;
+				for each (var aPlayerHud:PlayerElement in players)
+				{
+					
+					var cardData:CardData = aPlayerHud.getCard(registerIndex);
+					if (cardData != null)
+					{
+						cardsInRegister.push(cardData);
+					}
+					aPlayerHud.showContainer(true);
+					
+				}
+				
+				cardsInRegister.sortOn("priority");
+				
+				if (cardsInRegister.length > 0)
+				{
+					if (gameEnded)
+						return;
+					playCard(cardsInRegister.pop(), registerIndex);
+				}
+				else
+				{
+					map.moveFactory(onRegisterComplete, registerIndex);
+				}
+			
+			}
+			
+			private function placePickup():void
+			{
+				
+				if (AppData.getInstance().gameOptions.enablePickups)
+				{
+					var chance:Number = Math.random() * 100;
+					trace(chance, AppData.getInstance().gameOptions.chanceOfPickup);
+					if (chance <= AppData.getInstance().gameOptions.chanceOfPickup)
+					{
+						var node:Node = getNodeForPickUp();
+						node.addPickUp(BoardElementFactory.getInstance().getBoardElement("pickUp", false, false));
+					}
+				}
+			}
+			
+			private function getNodeForPickUp():Node
+			{
+				var node:Node = map.getNode(4 + (16 - 4) * Math.random(), 0 + (12 - 0) * Math.random());
+				
+				if (node == null)
+					return getNodeForPickUp();
+				
+				if (node.boardElement != null)
+				{
+					if (node.boardElement.type == "conveyorBelt" || "pit" || "rotateGear" || "conveyorBelt2x" || "conveyorBeltCorner")
+					{
+						return getNodeForPickUp();
+					}
+					if (node.pickup != null)
+					{
+						return getNodeForPickUp();
+					}
+				}
+				return node;
+			}
+			
+			private function playCard(card:CardData, registerIndex:int):void
+			{
+				gameStatus = 1;
+				
+				var timer:Timer = new Timer(100, 1)
+				timer.start();
+				timer.addEventListener(TimerEvent.TIMER_COMPLETE, function():void
+					{
+						timer.stop();
+						
+						(card.player as PlayerElement).showCard(card, showCardFinished, registerIndex);
+					
+					});
+			
+			}
+			
+			public function showCardFinished(card:CardData, registerIndex:int):void
+			{
+				
+				(card.player as PlayerElement).playCard(card, cardFinished, registerIndex);
+			
+			}
+			
+			public function cardFinished(registerIndex:int):void
+			{
+				this.registerIndex = registerIndex;
+				if (cardsInRegister.length == 0)
+				{
+					//Maybe put Timer inside move Factory to get the status monitor working
+					//and slow down the process during everybody reboots.
+					gameStatus = 2;
+					var timer:Timer = new Timer(1000, 1);
+					timer.start();
+					timer.addEventListener(TimerEvent.TIMER_COMPLETE, function():void
+						{
+							timer.stop();
+							executeItems();
+						});
+				}
+				else
+				{
+					playCard(cardsInRegister.pop(), registerIndex);
+				}
+			
+			}
+			
+			public function executeItems():void
+			{
+				if (itemQue.length == 0)
+				{
+					moveFactory(registerIndex);
+				}
+				else
+				{
+					gameStatus = 2;
+					var itemsPlayed:Array = itemQue.splice(0, itemQue.length);
+					
+					executeItem(itemsPlayed.pop(), aItemFinished, itemsPlayed);
+					
+				}
+			}
+			
+			public function executeItem(aPickUpAccept:PickUpAccept, aItemFinished:Function, itemsPlayed:Array):void
+			{
+				var arg:Point = aPickUpAccept.arg;
+				var aNode:Node = map.nodes[arg.x][arg.y];
+				if (aNode.boardElement != null)
+				{
+					aNode.boardElement.switchDirection(aItemFinished, itemsPlayed, game);
+				}
+			}
+			
+			public function aItemFinished(itemsPlayed:Array):void
+			{
+				if (itemsPlayed.length > 0)
+				{
+					executeItem(itemsPlayed.pop(), aItemFinished, itemsPlayed);
+				}
+				else
+				{
+					moveFactory(registerIndex);
+				}
+			
+			}
+			
+			private function moveFactory(registerIndex:int):void
+			{
+				gameStatus = 3;
+				var timer:Timer = new Timer(1000, 1);
+				timer.start();
+				timer.addEventListener(TimerEvent.TIMER_COMPLETE, function():void
+					{
+						if (registerIndex == 5)
+						{
+							map.moveFactory(onTurnComplete, registerIndex);
+						}
+						else
+						{
+							map.moveFactory(onRegisterComplete, registerIndex);
+						}
+					});
+			}
+			
+			public function onTurnComplete(registerIndex:int):void
+			{
+				playedRounds++;
+				gameStatus = 0;
+				
+				rebootCount = 0;
+				(game as RoboRally).broadCast("SyncClient");
+				for each (var aPlayerHud:PlayerElement in players)
+				{
+					
+					aPlayerHud.showContainer(false);
+					aPlayerHud.restoreIfDied();
+					aPlayerHud.rebootIfRebootPressed();
+				}
+				
+				(game as RoboRally).broadCast("SendCards");
+				
+				if (rebootCount == players.length)
+				{
+					startRegister(1);
+				}
+			}
+			
+			public function onRegisterComplete(registerIndex:int):void
+			{
+				(game as RoboRally).broadCast("SyncClient");
+				if (registerIndex == 5)
+				{
+					///>5 
+					trace("bug  Here");
+					onTurnComplete(5);
+					return;
+				}
+				
+				startRegister(++registerIndex);
+			
+			}
+			
+			public function setData(mapIndex:int):void
+			{
+				this.mapIndex = mapIndex;
+			}
+			
+			public function playItem(pickUpAccept:PickUpAccept):void
+			{
+				switch (pickUpAccept.pickuptype)
+				{
+					case "lightsOff": 
+						doLightsOut();
+						break;
+					default: 
+						break;
+				}
+			}
+			
+			public function holdItem(pickUpAccept:PickUpAccept):void
+			{
+				itemQue.push(pickUpAccept);
+			}
+			
+			private function addRect(width:int,height:int,offsetRight:int,offsetLeft:int,offsetBottom:int,offsetTop:int):void 
+			{
+				var rect:Rect = new Rect();
+				rect.percentWidth = width;
+				rect.percentHeight = height;
+				rect.right = offsetRight;
+				rect.left = offsetLeft;
+				rect.bottom = offsetBottom;
+				rect.top = offsetTop;
+				rect.fill = new SolidColor();
+				addElement(rect);
+			}
+			
+			private function doLightsOut():void
+			{
+				var rect:Rect = new Rect();
+				rect.percentWidth = 100;
+				rect.percentHeight = 100;
+				rect.fill = new SolidColor();
+				
+				addElement(rect);
+				
+				var timer:Timer = new Timer(20000, 1);
+				timer.start();
+				timer.addEventListener(TimerEvent.TIMER_COMPLETE, function():void
+					{
+						timer.stop();
+						try
+						{
+							removeElement(rect);
+						}
+						catch (e:Error)
+						{
+							
+						}
+					
+					});
+			}
+			
+			public function updateText(index:int):void 
+			{
+				switch (index)
+				{
+					case TutorialConstants.STAGE2:
+						Tutorial.text = "Avoid falling into pits or out of the map.";
+						map.highLightTutorial(TutorialConstants.STAGE2);
+						hideRect1.horizontalCenter = 180;
+						hideRect1.width = 600;
+						hideRect2.visible = true;
+						
+					break;
+					
+					case TutorialConstants.STAGE3:
+						Tutorial.text = "Every phase conveyor-belts and rotation-gears move robots.";
+						map.highLightTutorial(TutorialConstants.STAGE3);
+						hideRect1.horizontalCenter = 270;
+						hideRect1.width = 420;
+						
+					break;
+					
+					case TutorialConstants.STAGE4:
+						Tutorial.text = "When damage points reach 10, the robot explodes.";
+						map.highLightTutorial(TutorialConstants.STAGE4);
+						hideRect2.height = 180;
+						hideRect2.verticalCenter = -270;
+					break;
+					
+					case TutorialConstants.STAGE5:
+						Tutorial.text = "Rebooting removes all damage but requires one round.";
+						map.highLightTutorial(TutorialConstants.STAGE5);
+						hideRect1.height = 480;
+						hideRect1.verticalCenter = 120;
+						hideRect2.visible = false;
+					break;
+					
+					case TutorialConstants.STAGE6:
+						Tutorial.text = "Go for the last checkpoint!";
+						map.highLightTutorial(TutorialConstants.STAGE6);
+						hideRect1.visible = false;
+						hideRect2.visible = false;
+					break;
+					
+					case TutorialConstants.STAGE7:
+						Tutorial.text = "";
+					break;
+					default:
+				}
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:Rect width="100%"
+			height="100%">
+		<s:fill>
+			<s:BitmapFill source="@Embed(source='assets/bg.jpg')"
+						  id="bitmapFill"
+						  fillMode="repeat" />
+		</s:fill>
+	</s:Rect>
+	<s:BorderContainer id="mapContainer"
+					   left="60"
+					   right="60"
+					   top="60"
+					   bottom="60"
+					   horizontalCenter="0"
+					   verticalCenter="0"
+					   borderWeight="0">
+		<s:backgroundFill>
+			<s:BitmapFill source="@Embed(source='assets/playScreenBG.png')"
+						  id="mapBG" />
+		</s:backgroundFill>
+	</s:BorderContainer>
+	<s:Rect id = "hideRect1"
+			horizontalCenter = "90"
+			verticalCenter = "0"
+			height = "720"
+			width = "780"
+			visible="false">
+		<s:fill>
+			<mx:SolidColor color = "0x000000">
+				
+			</mx:SolidColor>
+		</s:fill>
+	</s:Rect>
+	<s:Rect id = "hideRect2"
+			horizontalCenter = "90"
+			verticalCenter = "-210"
+			height = "300"
+			width = "780"
+			visible = "false">
+		<s:fill>
+			<mx:SolidColor color = "0x000000">
+				
+			</mx:SolidColor>
+		</s:fill>
+	</s:Rect>
+	<screen:StatusMonitor id="monitor2"
+						  bottom="-10"
+						  horizontalCenter="0">
+	</screen:StatusMonitor>
+	<screen:StatusMonitor id="monitor1"
+						  top="-10"
+						  horizontalCenter="0"
+						  rotation="180">
+	</screen:StatusMonitor>
+	
+	
+		<s:Label id="Tutorial"
+				 top="70"
+				 width="100%"
+				 height="40"
+				 color="0xFFFF00"
+				 filters="{[dropShaText]}"
+				 horizontalCenter="0"
+				 scaleX="1"
+				 scaleY="1"
+				 text="Try to reach all Checkpoints in order."
+				 textAlign="center"
+				 verticalAlign="middle"
+				 fontSize="35"
+				 visible="false"
+				 fontFamily="Nasalization">
+		</s:Label>
+
+</base:GameScreen>

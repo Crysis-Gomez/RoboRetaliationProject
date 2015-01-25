@@ -1,0 +1,820 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   xmlns:mx="library://ns.adobe.com/flex/mx"
+				   xmlns:elements="elements.*"
+				   width="440"
+				   height="160"
+				   backgroundImage="@Embed(source='../assets/PlayerElement.png')"
+				   borderWeight="2"
+				   cornerRadius="5"
+				   creationComplete="init(event)"
+				   currentState="default"
+				   height.default="180"
+				   backgroundAlpha.default="1.0"
+				   borderVisible.default="false"
+				   contentBackgroundAlpha.default="1.0"
+				   width.docked="130"
+				   backgroundImage.docked="@Embed(source='../assets/PlayerHUDsmall.jpg')">
+
+	<s:states>
+		<s:State name="docked" />
+		<s:State name="default" />
+	</s:states>
+	<fx:Script>
+		<![CDATA[
+			import core.events.GameEvent;
+			import core.Game;
+			import flash.geom.Point;
+			import logger.Logger;
+			import maps.elements.base.BoardElement;
+			import maps.elements.pickup.PickUp;
+			import maps.elements.player.Player;
+			import maps.factories.BoardElementFactory;
+			import maps.Map;
+			import maps.Node;
+			import models.connection.GetDamage;
+			import models.connection.PickUpAccept;
+			import models.connection.PickUpDeclined;
+			import models.connection.PickUpRequest;
+			import models.connection.PlayerDied;
+			import models.data.CardData;
+			import elements.Card;
+			import screens.Playscreen;
+			import server.Connection;
+			import flash.display.Bitmap;
+			import flash.display.BitmapData;
+			import flash.events.Event;
+			import flash.events.MouseEvent;
+			import flash.events.TimerEvent;
+			import flash.events.TransformGestureEvent;
+			import flash.utils.Timer;
+			import models.data.PlayerData;
+			import models.data.RobotData;
+			import mx.core.UIComponent;
+			import utils.CardDeck;
+			import flash.filters.BitmapFilterQuality
+			
+			import mx.events.FlexEvent;
+			import server.Connection;
+			import server.events.ConnectionEvent;
+			import spark.components.BorderContainer;
+			import spark.filters.DropShadowFilter;
+			
+			public var playerData:PlayerData;
+			private var _ready:Boolean;
+			private var game:Game;
+			private var _connection:Connection;
+			private var _cards:Array;
+			private var pickups:Array = new Array();
+			public var playerBoardElement:Player;
+			public var doReboot:Boolean = false;
+			
+			[Embed(source="../assets/lightsOff.png")]
+			private var lightsOffClass:Class;
+			[Embed(source="../assets/switchDirection.png")]
+			private var switchDirectionClass:Class;
+			
+			[Embed(source="../assets/dead.png")]
+			private var deadClass:Class;
+			
+			[Embed(source="../assets/rebooting.png")]
+			private var rebootClass:Class;
+			
+			
+			
+			
+			[Bindable]
+			private var lightsOffImage:Bitmap = new lightsOffClass();
+			[Bindable]
+			private var switchDirectionImage:Bitmap = new switchDirectionClass();
+			[Bindable]
+			private var  deadBitmap:Bitmap = new deadClass();
+			
+			
+			[Bindable]
+			private var  rebootBitmap:Bitmap = new rebootClass();
+			
+			
+			private var lightsOffCount:int = 0;
+			private var switchDirectionCount:int = 0;
+			private var pickUpsPlayed:Array = new Array();
+			
+			public function set ready(value:Boolean):void
+			{
+				_ready = value;
+				if (ready)
+				{
+					status.color = 0x00FF00;
+				}
+				else
+				{
+					status.color = 0xFF0000;
+				}
+				this.cardContainter.visible = true;
+			}
+			
+			public function setData(connection:Connection, game:Game):void
+			{
+				this._connection = connection;
+				this.game = game;
+				
+				currentState = "default"
+				
+				var timer:Timer = new Timer(250);
+				timer.start();
+				timer.addEventListener(TimerEvent.TIMER, function():void
+					{
+						if (playerName != null)
+						{
+							playerName.text = "Player " + _connection.playerID;
+							backgroundColor.color = uint(GlobalConstants.COLORS[_connection.playerID - 1]);
+							timer.stop();
+							timer = null;
+						}
+					});
+				this._connection.connectionHandler.addEventListener(ConnectionEvent.PLAYER_READY, onPlayerReady);
+			}
+			
+			public function activateListeners():void
+			{
+				ready = false;
+				
+				addPickup(BoardElementFactory.getInstance().getBoardElement("pickUp", false, false) as PickUp);
+				addPickup(BoardElementFactory.getInstance().getBoardElement("pickUp", false, false) as PickUp);
+				addPickup(BoardElementFactory.getInstance().getBoardElement("pickUp", false, false) as PickUp);
+				
+				this._connection.connectionHandler.addEventListener(ConnectionEvent.PLAYER_SENDS_CARDS, onCardsReceived);
+				this._connection.connectionHandler.addEventListener(ConnectionEvent.PLAYER_REBOOT, rebooting);
+			}
+			
+			private function rebooting(e:ConnectionEvent):void
+			{
+				doReboot = true;
+			}
+			
+			public function restoreIfDied():void
+			{
+				if (playerBoardElement == null)
+					return;
+				
+				if (playerBoardElement.destroyed)
+				{
+					Logger.getInstance().log("Restoring player " + playerData.id + " " + playerData.name + "back to the board");
+					
+					if(!GlobalConstants.TUTORIAL_PLAY)playerData.damage = 2;
+					
+					deadImage.visible = false;
+					unlockRegister(5);
+					unlockRegister(4);
+					unlockRegister(3);
+					unlockRegister(2);
+					unlockRegister(1);
+					
+					showContainer(false);
+					playerBoardElement.restore();
+					
+					updateHud();
+				}
+			}
+			
+			public function getCard(registerIndex:Number):CardData
+			{
+				if (_cards.length == 0)
+					return null;
+				var card:CardData = _cards[registerIndex - 1] as CardData;
+				card.player = this;
+				return card;
+			}
+			
+			private function onCardsReceived(e:ConnectionEvent):void
+			{
+				
+				_cards = e.data[0];
+				
+				Logger.getInstance().log("Player " + playerData.id + " " + playerData + " played his/her cards\n cards played " + _cards);
+				
+				ready = true;
+				(game as RoboRally).gameHandler.dispatchEvent(new GameEvent(GameEvent.PLAYER_PLAYED_CARDS));
+			}
+			
+			public function playCard(card:CardData, cardFinished:Function, registerIndex:int):void
+			{
+				playerBoardElement.playCard(card, cardFinished, registerIndex);
+				
+			
+			}
+			
+			private function onPlayerReady(e:ConnectionEvent):void
+			{
+				playerData = e.data as PlayerData;
+				Logger.getInstance().log("Player " + playerData.id + " " + playerData.name + " is ready");
+				playerName.text = playerData.name;
+				livesLabel.text = playerData.lives.toString();
+				damageLabel.text = playerData.damage.toString();
+				livesImage.source = robotImage.source = (GameData.robots[playerData.robotID] as RobotData).image;
+				ready = true;
+				game.gameHandler.dispatchEvent(new GameEvent(GameEvent.PLAYER_READY, playerData));
+				
+				
+				deadImage.source = deadBitmap;
+				deadImage.visible = false;
+				
+				rebootImage.source = rebootBitmap;
+				rebootImage.visible =  false;
+			}
+			
+			public function destroy():void
+			{
+				game.removeElement(this);
+				
+				if (playerBoardElement != null)
+					playerBoardElement.destroy();
+				
+				try
+				{
+					_connection.socket.close();
+				}
+				catch (e:Error)
+				{
+					
+				}
+				
+				playerBoardElement = null;
+				
+				
+			}
+			
+			public function checkConnection():Boolean
+			{
+				return _connection.socket.connected;
+			}
+			
+			protected function init(event:FlexEvent):void
+			{
+				transformX = width / 2;
+				transformY = height / 2;
+				filters = [new DropShadowFilter(10, 45, 0, 0.75)];
+				this.addEventListener(TransformGestureEvent.GESTURE_ROTATE, onRotateGesture);
+				this.addEventListener(TransformGestureEvent.GESTURE_PAN, onPanGesture);
+				
+				for (var i:int = 0; i < 5; ++i)
+				{
+					var card:Card = cardContainter.getElementAt(i) as Card;
+					card.setPlayerElement(this);
+				}
+				
+			
+			}
+			
+			public function showContainer(bool:Boolean):void
+			{
+				
+				if (!bool)
+				{
+					ready = bool
+					for (var i:int = 0; i < 5; ++i)
+					{
+						var card:Card = cardContainter.getElementAt(i) as Card;
+						card.showBack();
+					}
+					
+				}
+				
+				
+				//cardContainter.visible = true;
+			
+			}
+			
+			public function showCard(data:CardData, showCardFinished:Function, index:int):void
+			{
+				(cardContainter.getElementAt(index - 1) as Card).show(data, showCardFinished, index);
+			}
+			
+			public function updateHud():void
+			{
+				Logger.getInstance().log("Updating hud of " + playerData.id + " " + playerData.name);
+				if (playerData.lives == 0)
+				{
+					//TODO: GameOver Code Here
+				}
+				livesLabel.text = playerData.lives.toString();
+				damageLabel.text = playerData.damage.toString();
+				
+				//Don't use this shit it's not working
+				//var updatePlayerData:PlayerUpdate = new PlayerUpdate();
+				//updatePlayerData.playerdata = playerData;
+				//
+				//_connection.send(updatePlayerData);
+				
+				switch (playerData.damage)
+				{
+					case 4: 
+						unlockRegister(5);
+						break;
+					case 5: 
+						lockRegister(5);
+						unlockRegister(4);
+						break;
+					case 6: 
+						lockRegister(4);
+						unlockRegister(3);
+						break;
+					case 7: 
+						lockRegister(3);
+						unlockRegister(2);
+						break;
+					case 8: 
+						lockRegister(2);
+						unlockRegister(1);
+						break;
+					case 9: 
+						lockRegister(1);
+						break;
+					case 10: 
+						if (playerBoardElement.destroyed)
+							return;
+						playerBoardElement.destroyed = true;
+						
+						break;
+				
+				}
+			
+			}
+			
+			private function lockRegister(number:int):void
+			{
+				Logger.getInstance().log("Locking register: " + number + "of player " + playerData.id + " " + playerData.name);
+				var card:Card = cardContainter.getElementAt(number - 1) as Card;
+				CardDeck.getInstance().pushToLock(card.data);
+				card.locked = true;
+			}
+			
+			private function unlockRegister(number:int):void
+			{
+				Logger.getInstance().log("Unlocking register: " + number + "of player " + playerData.id + " " + playerData.name);
+				var card:Card = cardContainter.getElementAt(number - 1) as Card;
+				CardDeck.getInstance().removeFromLock(card.data);
+				card.locked = false;
+			
+			}
+			
+			public function lostALife():void
+			{
+				deadImage.visible = true;
+				_connection.send(new PlayerDied());
+			}
+			
+			public function rebootIfRebootPressed():void
+			{
+				
+				
+				if (doReboot)
+				{
+					(game.currentScreen as Playscreen).rebootCount++;
+					doReboot = false;
+					_cards = new Array();
+					playerData.damage = 0;
+					updateHud();
+					showContainer(false);
+					ready = true;
+					rebootImage.visible = true;
+					if (GlobalConstants.TUTORIAL_PLAY) {
+						(this.playerBoardElement.map.game.currentScreen as screens.Playscreen).Tutorial.text = "Rebooting...";
+					}
+					addEventListener(Event.ENTER_FRAME, onEnter);
+				}else {
+					if(rebootImage.visible){
+						rebootImage.visible = false;
+						removeEventListener(Event.ENTER_FRAME, onEnter);
+					}
+				}
+			}
+			
+			private function onEnter(e:Event):void 
+			{
+				rebootImage.rotation += 2;
+			}
+			
+			public function addPickup(pickup:PickUp):void
+			{
+				switch (pickup.pickUpType)
+				{
+					case "LightsOff": 
+						lightsOffCount++;
+						break;
+					case "SwitchDirection": 
+						switchDirectionCount++;
+						break;
+				}
+				if (switchDirectionCount > 0)
+				{
+					switchDirection.visible = false;
+				}
+				if (lightsOffCount > 0)
+				{
+					lightsOff.visible = false;
+				}
+			}
+			
+			private function removePickUp(pickUpAccept:PickUpAccept):void
+			{
+				switch (pickUpAccept.pickuptype)
+				{
+					case "lightsOff": 
+						lightsOffCount--;
+						break;
+					case "switchDirection": 
+						switchDirectionCount--;
+						break;
+				}
+				if (switchDirectionCount <= 0)
+				{
+					switchDirection.visible = true;
+				}
+				if (lightsOffCount <= 0)
+				{
+					lightsOff.visible = true;
+				}
+			}
+			
+			private function onPanGesture(e:TransformGestureEvent):void
+			{
+				this.x += e.offsetX;
+				this.y += e.offsetY;
+			}
+			
+			private function onRotateGesture(e:TransformGestureEvent):void
+			{
+				transformX = width / 2;
+				transformY = height / 2;
+				
+				this.rotation += e.rotation;
+			}
+			
+			public function get ready():Boolean
+			{
+				return _ready;
+			}
+			
+			public function get cards():Array
+			{
+				return _cards;
+			}
+			
+			public function get connection():Connection
+			{
+				return _connection;
+			}
+			
+			protected function dock(event:MouseEvent):void
+			{
+				//if (currentState == "default")
+				//{
+					//currentState = "docked"
+				//}
+				//else
+				//{
+					//currentState = "default";
+				//}
+			}
+			
+			protected function activateItem(itemType:String):void
+			{
+				switch (itemType)
+				{
+					case "lightsOff": 
+						if (lightsOffCount <= 0) return;
+						waitForActivation("lightsOff", this);
+						break;
+					case "switchDirection": 
+						if (switchDirectionCount <= 0) return;
+						var map:Map = (game.currentScreen as Playscreen).map;
+						var hud:PlayerElement = this;
+						map.higlight(new Array("conveyorBelt", "conveyorBelt2x"));
+						map.addEventListener(MouseEvent.CLICK, function click(e:MouseEvent):void
+							{
+								var calcX:int = Math.floor((e.stageX - map.x) / 60);
+								var calcY:int = Math.floor((e.stageY - map.y) / 60);
+								var node:Node = map.nodes[(calcX - 1)][calcY - 1];
+								if (node.boardElement != null) {
+									switch(node.boardElement.type) {
+										case "conveyorBelt":
+										case "conveyorBelt2x":
+											waitForActivation("switchDirection", hud, new Point(node.xPos, node.yPos));
+											map.unhiglight(new Array("conveyorBelt", "conveyorBelt2x"));
+											map.removeEventListener(MouseEvent.CLICK, click);
+											break;
+									}
+								}
+								
+							});
+						
+						break;
+					default: 
+						//UNSUPPORTED ITEM
+						break
+				}
+			}
+			
+			private function waitForActivation(type:String, aPlayerHud:PlayerElement, arg:* = null ):void
+			{
+				var pickUpRequest:PickUpRequest = new PickUpRequest();
+				pickUpRequest.pickuptype = type;
+				pickUpRequest.uid = new Date().getTime();
+				pickUpRequest.arg = arg;
+				
+				pickUpsPlayed.push(pickUpRequest);
+				
+				connection.send(pickUpRequest);
+				connection.connectionHandler.addEventListener(ConnectionEvent.PICKUP_ACCEPT, onPickUpAccept);
+				connection.connectionHandler.addEventListener(ConnectionEvent.PICKUP_DECLINED, onPickUpDeclined);
+			}
+			
+			private function onPickUpDeclined(e:ConnectionEvent):void
+			{
+				for (var i:int = 0; i < pickUpsPlayed.length; ++i)
+				{
+					var pickUpRequest:PickUpRequest = pickUpsPlayed[i];
+					if (pickUpRequest.uid == (e.data as PickUpDeclined).uid)
+					{
+						pickUpsPlayed.splice(i, 1);
+					}
+				}
+			}
+			
+			private function onPickUpAccept(e:ConnectionEvent):void
+			{
+				var pickUpAccept:PickUpAccept = e.data as PickUpAccept;
+				for (var i:int = 0; i < pickUpsPlayed.length; ++i)
+				{
+					var pickUpRequest:PickUpRequest = pickUpsPlayed[i];
+					if (pickUpRequest.uid == pickUpAccept.uid)
+					{
+						pickUpsPlayed.splice(i, 1);
+					}
+				}
+				removePickUp(pickUpAccept);
+				switch (pickUpAccept.pickuptype)
+				{
+					case "lightsOff": 
+						playItem(pickUpAccept);
+						break;
+					case "switchDirection": 
+						holdItem(pickUpAccept);
+						break;
+					default: 
+						break;
+				}
+				trace("pickupaccept", pickUpsPlayed.length);
+			}
+			
+			private function holdItem(pickUpAccept:PickUpAccept):void
+			{
+				(game.currentScreen as Playscreen).holdItem(pickUpAccept);
+			}
+			
+			private function playItem(pickUpAccept:PickUpAccept):void
+			{
+				(game.currentScreen as Playscreen).playItem(pickUpAccept);
+			}
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<s:Label id="playerName"
+			 includeIn="default"
+			 color = "0xF2B522"
+			 left="130"
+			 bottom="75"
+			 width="150"
+			 height="40"
+			 fontSize="28"
+			 text="Label"
+			 textAlign="left"
+			 verticalAlign="middle"
+			 fontFamily="Nasalization">
+			 <s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			 </s:Label>
+	<s:BorderContainer id="imageContainer"
+					   left="8"
+					   width="110"
+					   click="dock(event)"
+					   cornerRadius="20"
+					   dropShadowVisible="false"
+					   left.default="10"
+					   top.default="60"
+					   bottom.default="10"
+					   top.docked="8"
+					   height.docked="110">
+		<s:backgroundFill>
+			<s:SolidColor id="backgroundColor"
+						  alpha="100" />
+		</s:backgroundFill>
+		<s:BorderContainer left="10"
+						   right="10"
+						   top="10"
+						   bottom="10"
+						   borderWeight="0"
+						   cornerRadius="10"
+						   backgroundImage="@Embed(source='../assets/iconbg.png')">
+
+						   
+			
+					   
+		<s:Image id="robotImage"
+					 left="5"
+					 right="5"
+					 top="5"
+					 bottom="5" />
+					 
+		<s:Image id="rebootImage"			 
+					 left="5"
+					 right="5"
+					 top="5"
+					 bottom="5" />
+					 
+		 <s:Image id="deadImage"
+					  
+					 left="5"
+					 right="5"
+					 top="5"
+					 bottom="5"
+			/>
+					 
+					 
+			<s:Ellipse width="10"
+					   height="10"
+					   left.default="5"
+					   top.default="5"
+					   width.default="10"
+					   height.default="10">
+				<s:fill>
+					<s:SolidColor id="status"
+								  color="0xFF0000" />
+				</s:fill>
+			</s:Ellipse>
+		</s:BorderContainer>
+
+	</s:BorderContainer>
+
+	<s:BorderContainer id="cardContainter"
+					   includeIn="default"
+					   x="130"
+					   bottom="10"
+					   width="300"
+					   height="60">
+		<elements:Card id="card1"
+					   x="0"
+					   y="0"
+					   backgroundImage="@Embed(source='../assets/CardBack.png')" />
+
+		<elements:Card id="card2"
+					   x="60"
+					   y="0"
+					   backgroundImage="@Embed(source='../assets/CardBack.png')" />
+
+		<elements:Card id="card3"
+					   x="120"
+					   y="0"
+					   backgroundImage="@Embed(source='../assets/CardBack.png')" />
+		<elements:Card id="card4"
+					   x="180"
+					   y="0"
+					   backgroundImage="@Embed(source='../assets/CardBack.png')" />
+		<elements:Card id="card5"
+					   x="240"
+					   y="0"
+					   backgroundImage="@Embed(source='../assets/CardBack.png')" />
+	</s:BorderContainer>
+
+
+	<s:Image id="livesImage"
+			 includeIn="default"
+			 right="120"
+			 bottom="80"
+			 width="40"
+			 height="40" />
+	<s:Image includeIn="default"
+			 right="50"
+			 bottom="80"
+			 width="40"
+			 height="40"
+			 source="@Embed('../assets/DamageIcon.png')" />
+	<s:Label id="livesLabel"
+			 includeIn="default"
+			 color = "0xF2B522"
+			 right="90"
+			 bottom="80"
+			 width="40"
+			 height="40"
+			 fontSize="32"
+			 text="3"
+			 textAlign="center"
+			 verticalAlign="bottom" 
+			 fontFamily="Nasalization">
+			 <s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			 </s:Label>
+	<s:Label id="damageLabel"
+			 includeIn="default"
+			 color = "0xF2B522"
+			 right="10"
+			 bottom="80"
+			 width="40"
+			 height="40"
+			 fontSize="32"
+			 text="10"
+			 textAlign="center"
+			 verticalAlign="bottom" 
+			 fontFamily="Nasalization">
+			 <s:filters>
+					<s:GlowFilter blurX="1.8"
+								  blurY="1.8"
+								  color="0x000000"
+								  quality="{BitmapFilterQuality.HIGH}"
+								  strength="50">
+					</s:GlowFilter>
+				</s:filters>
+			 </s:Label>
+
+	<!--PICKUP PART-->
+	<s:HGroup includeIn="default"
+			  gap="5"
+			  left="100"
+			  top="4"
+			  width="85"
+			  height="40">
+		<s:BorderContainer width="40"
+						   height="40"
+						   borderVisible="false"
+						   cornerRadius="10"
+						   click="activateItem('lightsOff')">
+			<s:Rect width="100%"
+					height="100%"
+					radiusX="0"
+					radiusY="0">
+				<s:fill>
+					<mx:BitmapFill source="{lightsOffImage}">
+
+					</mx:BitmapFill>
+				</s:fill>
+			</s:Rect>
+			<s:Rect id="lightsOff"
+					left="0"
+					width="100%"
+					height="100%"
+					radiusX="0"
+					radiusY="0">
+				<s:fill>
+					<mx:SolidColor color="#000000"
+								   alpha="0.8">
+					</mx:SolidColor>
+				</s:fill>
+			</s:Rect>
+		</s:BorderContainer>
+		<s:BorderContainer width="40"
+						   height="40"
+						   borderVisible="false"
+						   cornerRadius="10"
+						   click="activateItem('switchDirection')">
+			<s:Rect width="100%"
+					height="100%"
+					radiusX="0"
+					radiusY="0">
+				<s:fill>
+					<mx:BitmapFill source="{switchDirectionImage}">
+
+					</mx:BitmapFill>
+				</s:fill>
+			</s:Rect>
+			<s:Rect id="switchDirection"
+					width="100%"
+					height="100%"
+					radiusX="0"
+					radiusY="0">
+				<s:fill>
+					<mx:SolidColor color="#000000"
+								   alpha="0.8">
+					</mx:SolidColor>
+				</s:fill>
+			</s:Rect>
+		</s:BorderContainer>
+	</s:HGroup>
+</s:BorderContainer>

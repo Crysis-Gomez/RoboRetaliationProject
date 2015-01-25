@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   width="60"
+				   height="60">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import core.Game;
+			import flash.display.Bitmap;
+			import flash.events.Event;
+			import flash.events.MouseEvent;
+			import flash.geom.Point;
+			import gui.player.PlayerElement;
+			import logger.Logger;
+			import models.data.CardData;
+			import models.data.CardsData;
+			
+			public var data:CardData;
+			private var _player:PlayerElement;
+			private var status:String = "notVisible";
+			private var point:Point;
+			private var speed:Number = 6;
+			private var velX:Number = 0;
+			private var velY:Number = 0;
+			private var firstPosition:Point;
+			private var _locked:Boolean;
+			
+			[Embed(source="assets/CardDown1.png")]
+			private var cardDownClass:Class;
+			private var cardDown:Bitmap = new cardDownClass();
+			[Embed(source="assets/CardLeft.png")]
+			private var cardLeftClass:Class;
+			private var cardLeft:Bitmap = new cardLeftClass();
+			[Embed(source="assets/CardRight.png")]
+			private var cardRightClass:Class;
+			private var cardRight:Bitmap = new cardRightClass();
+			[Embed(source="assets/CardTurn.png")]
+			private var cardTurnClass:Class;
+			private var cardTurn:Bitmap = new cardTurnClass();
+			[Embed(source="assets/CardUp1.png")]
+			private var cardUp1Class:Class;
+			private var cardUp1:Bitmap = new cardUp1Class();
+			[Embed(source="assets/CardUp2.png")]
+			private var cardUp2Class:Class;
+			private var cardUp2:Bitmap = new cardUp2Class();
+			[Embed(source="assets/CardUp3.png")]
+			private var cardUp3Class:Class;
+			private var cardUp3:Bitmap = new cardUp3Class();
+			
+			
+			[Embed(source="assets/locked.png")]
+			private var lockedClass:Class;
+			private var lockedBitmap:Bitmap = new lockedClass();
+			
+			private var showCardFinished:Function;
+			private var index:int;
+			
+			public function showBack():void
+			{
+				if (locked) {
+					lockedImage.visible = true;
+					return;
+				}
+				
+				image.visible = false;
+				priority.visible = false;
+				lockedImage.visible = false;
+			}
+			
+			public function show(data:CardData, showCardFinished:Function, index:int):void
+			{
+				Logger.getInstance().log("Showing card:  " + index + " From player : " + _player.playerData.id + " with name: " + _player.playerData.name);
+				
+				this.data = data;
+				this.index = index;
+				this.showCardFinished = showCardFinished;
+				
+				cacheAsBitmap = true;
+				priority.source = CardsData.priorities[data.priority / 10]
+				
+				status = "visible";
+				
+				priority.visible = true;
+				
+				this.image.visible = true;
+				
+				switch (data.action)
+				{
+					case "forward": 
+						switch (data.amount)
+					{
+						case 1: 
+							image.source = cardUp1;
+							break;
+						case 2: 
+							image.source = cardUp2;
+							break;
+						case 3: 
+							image.source = cardUp3;
+							break;
+					}
+						break;
+					case "back": 
+						image.source = cardDown;
+						break;
+					case "rotate": 
+						switch (data.amount)
+					{
+						case 90: 
+							image.source = cardRight;
+							break;
+						case-90: 
+							image.source = cardLeft;
+							break;
+						case 180: 
+							image.source = cardTurn;
+							break;
+					}
+						break;
+				}
+				
+				if (!_player.playerBoardElement.destroyed)
+				{
+					var copy:CardCopy = new CardCopy();
+					
+					(_player.parent as Game).addElement(copy);
+					
+					copy.x = _player.playerBoardElement.x + _player.playerBoardElement.parent.x;
+					copy.y = _player.playerBoardElement.y + _player.playerBoardElement.parent.y;
+					
+					copy.show(data, showCardFinished, index, _player);
+				}
+				else
+				{
+					showCardFinished(data,index);
+				}
+			
+			}
+			
+			public function setPlayerElement(player:PlayerElement):void
+			{
+				_player = player;
+				lockedImage.source = lockedClass;
+				lockedImage.visible = false;
+			}
+			
+			public function get locked():Boolean
+			{
+				return _locked;
+			}
+			
+			public function set locked(value:Boolean):void
+			{
+				_locked = value;
+			}
+		]]>
+	</fx:Script>
+	<s:Label id="label"
+			 verticalCenter="0"
+			 horizontalCenter="0"
+			 width="30"
+			 height="60">
+	</s:Label>
+	
+	
+	
+	<s:Image id="image"
+			 height="100%"
+			 width="100%">
+
+
+	</s:Image>
+	<s:Image id="priority"
+			 height="100%"
+			 width="100%">
+
+
+
+	</s:Image>
+	
+	
+	<s:Image id="lockedImage"
+			 height="100%"
+			 width="100%"
+	
+	
+		></s:Image>
+	
+</s:BorderContainer>

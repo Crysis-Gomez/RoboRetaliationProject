@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:elements="elements.*"
+		actionBarVisible="false"
+		tabBarVisible="false"
+		title="PlayView"
+		creationComplete="init()"
+		keyDown="onKeyDown(event)">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import connection.ConnectionEvent;
+			import connection.SocketConnection;
+			import elements.Card;
+			import elements.CardRegister;
+			import flash.display.Bitmap;
+			import flash.events.KeyboardEvent;
+			import flash.ui.Keyboard;
+			import flash.ui.KeyLocation;
+			import views.RoboRallyClientHomeView;
+			
+			//	import models.connection.CardsPlayer;
+			import models.connection.ReceivedCards;1
+			import models.data.CardData;
+			import models.data.PlayerData;
+			import models.data.RobotData;
+			
+			private var playerData:PlayerData;
+			public var selectedCard:Card;
+			private var count:int;
+			private var destroyed:Boolean;
+			private var cardRegisters:Array;
+			
+			private function onKeyDown(event:KeyboardEvent):void
+			{
+			
+			}
+			
+			private function init():void
+			{
+				cardRegisters = new Array();
+				
+				for (var i:int = 0; i < hand.numElements; ++i)
+				{
+					cardRegisters.push(hand.getElementAt(i));
+				}
+			
+				playerData = data[0] as PlayerData;
+				displayCards(data[1] as Array);
+				
+				backgroundColor.color = GlobalConstants.COLORS[playerData.id - 1];
+				
+				livesImage.source = robotImage.source = (GameData.robots[playerData.robotID] as RobotData).image;
+				playerNameLabel.text = playerData.name.toString();
+				
+				damageLabel.text = playerData.damage.toString();
+				livesLabel.text = playerData.lives.toString();
+				
+				
+				SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.RECEIVED_CARDS, onCardsReceived);
+				SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.PLAYER_DIED, onPlayerDied);
+				SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.CONNECT_CLOSE, onClose);
+				SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.GET_DAMAGE, onDamageGet);
+				SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.LOST_DAMAGE, onDamageLost);
+			}
+			
+			private function onDamageLost(e:ConnectionEvent):void 
+			{
+				playerData.damage -= e.data;
+				if (playerData.damage < 0) {
+					playerData.damage = 0;
+				}
+				doRegisters();
+				damageLabel.text = playerData.damage.toString();
+			}
+			
+			private function onDamageGet(e:ConnectionEvent):void 
+			{
+				playerData.damage++;
+				if (playerData.damage > 10) {
+					playerData.damage = 10;
+				}
+				doRegisters();
+				damageLabel.text = playerData.damage.toString();
+			}
+			
+			private function onClose(e:ConnectionEvent):void
+			{
+				var timer:Timer = new Timer(250);
+				timer.addEventListener(TimerEvent.TIMER, function():void
+					{
+						if (navigator != null)
+						{
+							navigator.popView();
+							navigator.pushView(RoboRallyClientHomeView);
+						}
+					});
+				
+				timer.start();
+			}
+			
+			private function onPlayerDied(e:ConnectionEvent):void
+			{
+				playerData.lives--;
+				destroyed = true;
+				robotDied.visible = true;
+				livesLabel.text = playerData.lives.toString();
+			}
+			
+			private function doRegisters():void
+			{
+				switch (playerData.damage)
+				{
+					case 1: 
+						unlockRegister(1);
+						unlockRegister(2);
+						unlockRegister(3);
+						unlockRegister(4);
+						unlockRegister(5);
+						break;
+					case 2: 
+						unlockRegister(1);
+						unlockRegister(2);
+						unlockRegister(3);
+						unlockRegister(4);
+						unlockRegister(5);
+						break;
+					case 3: 
+						unlockRegister(1);
+						unlockRegister(2);
+						unlockRegister(3);
+						unlockRegister(4);
+						unlockRegister(5);
+						break;
+					case 4: 
+						unlockRegister(1);
+						unlockRegister(2);
+						unlockRegister(3);
+						unlockRegister(4);
+						unlockRegister(5);
+						break;
+					case 5: 
+						lockRegister(5);
+						unlockRegister(4);
+						unlockRegister(1);
+						unlockRegister(2);
+						unlockRegister(3);
+						break;
+					case 6: 
+						lockRegister(5);
+						lockRegister(4);
+						unlockRegister(3);
+						unlockRegister(1);
+						unlockRegister(2);
+						break;
+					case 7: 
+						lockRegister(5);
+						lockRegister(4);
+						lockRegister(3);
+						unlockRegister(2);
+						unlockRegister(1);
+						break;
+					case 8: 
+						lockRegister(5);
+						lockRegister(4);
+						lockRegister(3);
+						lockRegister(2);
+						unlockRegister(1);
+						break;
+					case 9: 
+						lockRegister(5);
+						lockRegister(4);
+						lockRegister(3);
+						lockRegister(2);
+						lockRegister(1);
+						break;
+				}
+			}
+			
+			private function lockRegister(number:Number):void
+			{
+				(registers.getElementAt(number - 1) as CardRegister).locked = true;
+			}
+			
+			private function unlockRegister(number:Number):void
+			{
+				(registers.getElementAt(number - 1) as CardRegister).locked = false;
+			}
+			
+			private function displayCards(cards:Array):void
+			{
+				for (var i:int = 0; i < cards.length; ++i)
+				{
+					var cardData:CardData = cards[i];
+					var cardElement:CardRegister = hand.getElementAt(i) as CardRegister;
+					cardElement.addCard(cardData);
+				}
+			}
+			
+			public function resetCards(cards:Array):void
+			{
+				
+				for (var i:int = 0; i < 5; ++i)
+				{
+					var cardElement:CardRegister = registers.getElementAt(i) as CardRegister;
+					cardElement.removeCard();
+				}
+				
+				for (var j:int = 0; j < 9; ++j)
+				{
+					var cardElement2:CardRegister = hand.getElementAt(j) as CardRegister;
+					cardElement2.removeCard();
+				}
+				
+				lockRegisterButton.enabled = true;
+				selectedCard = null;
+				
+				displayCards(cards);
+			}
+			
+			
+			public function checkSelectedCard():void 
+			{
+				for (var i:int = 0; i < hand.numElements ; i++) 
+				{
+					var card:Card = hand[i];
+				
+				}
+			}
+			
+			public function sortToFront(cardRegister:CardRegister):void
+			{
+				var topcard:int = 9;
+				for (var i:int = 0; i < 8; ++i)
+				{
+					if (cardRegisters[i] == cardRegister)
+					{
+						hand.setElementIndex(cardRegisters[i], --topcard);
+						if (i != 0)
+						{
+							var j:int = i - 1;
+							for (j; j > 0; j--)
+							{
+								hand.setElementIndex(cardRegisters[j], --topcard);
+							}
+						}
+						if (i != 8)
+						{
+							var k:int = i + 1;
+							for (k; k < 9; ++k)
+							{
+								hand.setElementIndex(cardRegisters[k], --topcard);
+							}
+						}
+						return;
+					}
+					
+				}
+			}
+			
+			private function onRegisterLock():void
+			{
+				selectedCard = null;
+				var playedCards:Array = new Array();
+				for (var i:int = 0; i < registers.numElements - 1; ++i)
+				{
+					if ((registers.getElementAt(i) as CardRegister).card == null)
+					{
+						//TODO: Nice gracefull message the card didn't play five cards in total some kind of popup notification system
+						return;
+					}
+					else
+					{
+						playedCards.push((registers.getElementAt(i) as CardRegister).card.data);
+					}
+					
+					if (playedCards.length == 5)
+					{
+						lockRegisterButton.enabled = false;
+						
+						var receivedCardsPlayer:ReceivedCards = new ReceivedCards();
+						receivedCardsPlayer.cards = playedCards;
+						SocketConnection.getInstance().sendData(receivedCardsPlayer);
+					}
+					else
+					{
+						//TODO: Nice gracefull message the card didn't play five cards in total some kind of popup notification system
+					}
+				}
+			
+			}
+			
+			private function onCardsReceived(e:ConnectionEvent):void
+			{
+				if (destroyed)
+				{
+					restore();
+				}
+				
+				resetCards(e.data as Array);
+			}
+			
+			private function restore():void
+			{
+				robotDied.visible = false;
+				destroyed = false;
+				unlockRegister(5);
+				unlockRegister(4);
+				unlockRegister(3);
+				unlockRegister(2);
+				unlockRegister(1);
+				playerData.damage = 2;
+				damageLabel.text = playerData.damage.toString();
+			}
+		]]>
+	</fx:Script>
+	<!--BACKGROUND-->
+	<s:Rect width="100%"
+			height="100%">
+		<s:fill>
+			<s:BitmapFill source="@Embed(source='../assets/bg.jpg')">
+			</s:BitmapFill>
+		</s:fill>
+	</s:Rect>
+
+	<s:Group left="50"
+			 right="50"
+			 bottom="10"
+			 height="63%">
+		<s:Rect width="100%"
+				height="100%">
+			<s:fill>
+				<s:SolidColor color="0xC0C0C0">
+
+				</s:SolidColor>
+			</s:fill>
+		</s:Rect>
+		<s:VGroup left="10"
+				  right="10"
+				  top="10"
+				  gap="10"
+				  bottom="10">
+			<s:Group width="100%"
+					 height="50%">
+				<s:Rect width="100%"
+						height="100%">
+					<s:fill>
+						<s:SolidColor color="0x808080">
+						</s:SolidColor>
+					</s:fill>
+				</s:Rect>
+				<s:HGroup width="100%"
+						  height="100%"
+						  gap="5"
+						  horizontalCenter="0"
+						  paddingBottom="10"
+						  paddingTop="10"
+						  id="registers"
+						  horizontalAlign="center">
+
+					<elements:CardRegister id="one" />
+					<elements:CardRegister id="two" />
+					<elements:CardRegister id="three" />
+					<elements:CardRegister id="four" />
+					<elements:CardRegister id="five" />
+					<s:Button height="100%"
+							  skinClass="skins.LockRegisterButton"
+							  id="lockRegisterButton"
+							  click="onRegisterLock()">
+					</s:Button>
+
+				</s:HGroup>
+			</s:Group>
+			<s:Group width="100%"
+					 height="50%">
+				<s:Rect width="100%"
+						height="100%">
+					<s:fill>
+						<s:SolidColor color="0x808080">
+						</s:SolidColor>
+					</s:fill>
+				</s:Rect>
+
+				<s:Group id="hand"
+						 width="100%"
+						 clipAndEnableScrolling="true"
+						 height="100%">
+					<elements:CardRegister left="0" />
+					<elements:CardRegister left="{hand.height + Math.round((hand.width-(hand.height*9))/8)}" />
+					<elements:CardRegister left="{hand.height*2 + Math.round((hand.width-(hand.height*9))/8)*2}" />
+					<elements:CardRegister left="{hand.height*3 + Math.round((hand.width-(hand.height*9))/8)*3}" />
+					<elements:CardRegister left="{hand.height*4 + Math.round((hand.width-(hand.height*9))/8)*4}" />
+					<elements:CardRegister left="{hand.height*5 + Math.round((hand.width-(hand.height*9))/8)*5}" />
+					<elements:CardRegister left="{hand.height*6 + Math.round((hand.width-(hand.height*9))/8)*6}" />
+					<elements:CardRegister left="{hand.height*7 + Math.round((hand.width-(hand.height*9))/8)*7}" />
+					<elements:CardRegister left="{hand.height*8 + Math.round((hand.width-(hand.height*9))/8)*8}" />
+
+
+				</s:Group>
+
+			</s:Group>
+		</s:VGroup>
+	</s:Group>
+	<s:Group left="50"
+			  right="50"
+			  top="10"
+			  height="32%">
+
+
+		<s:Group left="0"
+				 top="0"
+				 width="{20+imageContainer.width}"
+				 height="100%">
+			<s:Rect left="0" width="100%" height="100%">
+				<s:fill>
+					<s:SolidColor color="0xC0C0C0">
+
+					</s:SolidColor>
+				</s:fill>
+			</s:Rect>
+			<s:BorderContainer id="imageContainer"
+							   left="10"
+							   top="10"
+							   bottom="10"
+							   width="{imageContainer.height}"
+							   cornerRadius="20"
+							   dropShadowVisible="false">
+				<s:backgroundFill>
+					<s:SolidColor id="backgroundColor"
+								  alpha="100" />
+				</s:backgroundFill>
+				<s:BorderContainer left="10"
+								   right="10"
+								   top="10"
+								   bottom="10"
+								   borderWeight="0"
+								   cornerRadius="10"
+								   backgroundImage="@Embed(source='assets/iconbg.png')">
+
+					<s:Image id="robotImage"
+							 left="5"
+							 right="5"
+							 top="5"
+							 bottom="5" />
+					<s:Image id="robotDied"
+							 visible="false"
+							 source="@Embed(source='assets/dead.png')"
+							 width="100%"
+							 height="100%">
+					</s:Image>
+				</s:BorderContainer>
+			</s:BorderContainer>
+
+
+		</s:Group>
+		<s:Group right="0" width="{powerOffButton.width+40}" height="100%">
+			<s:Rect right="0" width="100%" height="100%">
+				<s:fill>
+					<s:SolidColor color="0xC0C0C0">
+
+					</s:SolidColor>
+				</s:fill>
+			</s:Rect>
+			<s:Button id="powerOffButton"
+					  right="20"
+					  top="20"
+					  skinClass="skins.RebootButton"
+					  bottom="20"
+					  width="{powerOffButton.height}"
+					  label="Button" />
+
+		</s:Group>
+	</s:Group>
+</s:View>

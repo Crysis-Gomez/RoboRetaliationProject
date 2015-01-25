@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		actionBarVisible="false" tabBarVisible="false" title="WaitingView">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	
+	<fx:Script>
+		<![CDATA[
+import connection.ConnectionEvent;
+import connection.SocketConnection;
+import models.connection.GameOptions;
+import views.play.PlayView;
+import views.play.PlayView3;
+		private function init():void
+		{
+			SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.GAME_STARTED, onGameStarted);
+			SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.GAME_OPTIONS, onGameOptions);
+			SocketConnection.getInstance().connectionHandler.addEventListener(ConnectionEvent.RECEIVED_CARDS, onCardsReceived);
+		}
+		
+		private function onGameOptions(e:ConnectionEvent):void 
+		{
+			AppData.getInstance().setGameOptions(e.data as GameOptions);
+		}
+		
+		private function onCardsReceived(e:ConnectionEvent):void 
+		{
+			navigator.popView();
+			navigator.pushView(PlayView3, new Array(data, e.data));
+			SocketConnection.getInstance().connectionHandler.removeEventListener(ConnectionEvent.RECEIVED_CARDS, onCardsReceived);
+			
+		}
+		
+		private function onGameStarted(e:ConnectionEvent):void 
+		{
+			
+		}
+		]]>
+	</fx:Script>
+	<s:Rect width="100%" height="100%">
+		<s:fill>
+			<s:BitmapFill source="@Embed(source='assets/bg.jpg')"></s:BitmapFill>
+		</s:fill>
+	</s:Rect>
+	<s:Label color="#FFFFFF" creationComplete="init()" fontSize="32" horizontalCenter="0"
+			 text="Waiting for game to be started" textAlign="center" verticalAlign="middle"
+			 verticalCenter="0">
+		<s:filters>
+			<s:GlowFilter 
+						  color="0x000000"
+						  strength="100"
+						  >
+				
+			</s:GlowFilter>
+		</s:filters>
+	</s:Label>
+	
+</s:View>

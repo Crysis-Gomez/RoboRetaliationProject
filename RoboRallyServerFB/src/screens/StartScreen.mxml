@@ -1,0 +1,335 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base:GameScreen xmlns:fx="http://ns.adobe.com/mxml/2009"
+				 xmlns:s="library://ns.adobe.com/flex/spark"
+				 xmlns:mx="library://ns.adobe.com/flex/mx"
+				 xmlns:base="screens.base.*"
+				 width="100%"
+				 height="100%"
+				 clipAndEnableScrolling="true"
+				 creationComplete="init(event)"
+				 width.waiting="1920"
+				 height.waiting="1080">
+	<base:states>
+		<s:State name="waiting" />
+		<s:State name="startable" />
+	</base:states>
+	<fx:Script>
+		<![CDATA[
+			import core.events.GameEvent;
+			import flash.sampler.NewObjectSample;
+			
+			import flash.filters.BitmapFilterQuality;
+			
+			import gui.player.PlayerElement;
+			
+			import mx.events.FlexEvent;
+			
+			import server.*;
+			import server.events.*;
+			
+			protected function init(event:FlexEvent):void
+			{
+				game.gameHandler.addEventListener(GameEvent.PLAYER_CONNECTED, onPlayerJoined);
+				this.addEventListener(Event.ENTER_FRAME, updateFrame);
+				//game.removeCurrentScreen();
+				//game.addScreen(new MapSelectionScreen());
+				//JERRY TOOK ME 10 minutes to find this shit -_-
+			
+			}
+			
+			private function onPlayerJoined(e:GameEvent):void
+			{
+				setStatusText();
+				loadPlayerElement(e.data);
+			
+			}
+			
+			private function setStatusText():void
+			{
+				if ((game as RoboRally).clients.length == 1)
+				{
+					status1.text = "Waiting for 1 more player to connect...";
+					status2.text = "Waiting for 1 more player to connect...";
+				}
+				else
+				{
+					status1.text = "Waiting for players to be ready...";
+					status2.text = "Waiting for players to be ready...";
+				}
+			}
+			
+			private function loadPlayerElement(connection:Connection):void
+			{
+				
+				var playerElement:PlayerElement = new PlayerElement();
+				if (connection.playerID < 5)
+				{
+					playerElement.x = 20;
+					playerElement.y = 200 * (connection.playerID - 1) + 150;
+				}
+				else
+				{
+					playerElement.x = width - 20 - 440;
+					playerElement.y = 200 * (connection.playerID - 1 - 4) + 150;
+				}
+				
+				game.addElement(playerElement);
+				(game as RoboRally).addPlayerHud(playerElement)
+				
+				game.gameHandler.addEventListener(GameEvent.PLAYER_READY, onPlayerReady);
+				
+				checkIfGameStartable();
+				if ((game as RoboRally).startable)
+				{
+					currentState = "startable";
+				}
+				else
+				{
+					currentState = "waiting";
+				}
+				playerElement.setData(connection, game);
+			}
+			
+			private function onPlayerReady(e:GameEvent):void
+			{
+				checkIfGameStartable();
+				if ((game as RoboRally).startable)
+				{
+					currentState = "startable";
+				}
+				else
+				{
+					currentState = "waiting";
+				}
+			}
+			
+			private function checkIfGameStartable():void
+			{
+				for each (var playerElement:PlayerElement in(game as RoboRally).playerHuds)
+				{
+					if (!playerElement.ready)
+					{
+						(game as RoboRally).startable = false;
+						return;
+					}
+				}
+				if ((game as RoboRally).clients.length < 1)
+				{
+					(game as RoboRally).startable = false;
+					return;
+				}
+				(game as RoboRally).startable = true;
+				
+				
+				if ((game as RoboRally).clients.length == 1) {
+					GlobalConstants.TUTORIAL_PLAY = true;
+				}else GlobalConstants.TUTORIAL_PLAY = false; 
+				
+			}
+			
+			protected function startGame(event:MouseEvent):void
+			{
+				(game as RoboRally).started = true;
+				game.removeCurrentScreen();
+				game.gameHandler.removeEventListener(GameEvent.PLAYER_CONNECTED, onPlayerJoined);
+				(game as RoboRally).hideHuds();
+				if(!GlobalConstants.TUTORIAL_PLAY){
+					game.addScreen(new MapSelectionScreen());
+				}else {
+					game.addScreen(new Playscreen());
+					
+					
+				(game as RoboRally).broadCast("MapSelected");
+				(game as RoboRally).showHuds();
+				
+				}
+				
+				
+				/*
+				game.removeCurrentScreen();
+				(game as RoboRally).broadCast("MapSelected");
+				(game as RoboRally).showHuds();
+				var playScreen:Playscreen = new Playscreen();
+				playScreen.setData(mapIndex);
+				game.addScreen(playScreen);*/
+			}
+			
+			protected function updateFrame(event:Event):void
+			{
+				
+				gear1.transformX = 175;
+				gear1.transformY = 175;
+				gear1.rotation += 1;
+				
+				gear2.transformX = 175;
+				gear2.transformY = 175;
+				gear2.rotation -= 1;
+				
+				gear3.transformX = 175;
+				gear3.transformY = 175;
+				gear3.rotation += 1;
+				
+				gear4.transformX = 175;
+				gear4.transformY = 175;
+				gear4.rotation -= 1;
+			}
+			
+			protected function goToMapSelectionScreen():void
+			{
+				game.removeCurrentScreen();
+				(game as RoboRally).hideHuds();
+				game.addScreen(new MapSelectionScreen());
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<s:Rect width="100%"
+			height="100%">
+		<s:fill>
+			<s:BitmapFill source="@Embed(source='assets/bg.jpg')"
+						  id="bitmapFill" />
+		</s:fill>
+	</s:Rect>
+	<s:Image id="gear1"
+			 x="380"
+			 y="130"
+			 width="350"
+			 height="350"
+			 source="@Embed('assets/Gear.png')" />
+	<s:Image id="gear2"
+			 x="700"
+			 y="190"
+			 width="350"
+			 height="350"
+			 source="@Embed('assets/Gear.png')" />
+	<s:Image id="gear3"
+			 x="870"
+			 y="540"
+			 width="350"
+			 height="350"
+			 source="@Embed('assets/Gear.png')" />
+	<s:Image id="gear4"
+			 x="1190"
+			 y="600"
+			 width="350"
+			 height="350"
+			 source="@Embed('assets/Gear.png')" />
+	<s:Image width="1000"
+			 rotation="0"
+			 source="@Embed(source='assets/logo-Tekst.png')"
+			 verticalCenter="225"
+			 horizontalCenter.startable="250"
+			 x.waiting="710"
+			 verticalCenter.waiting="225">
+	</s:Image>
+	<s:Image width="1000"
+			 horizontalCenter="-250"
+			 rotation="180"
+			 verticalCenter="-225"
+			 source="@Embed(source='assets/logo-Tekst.png')">
+	</s:Image>
+	<s:Label id="status1"
+			 includeIn="waiting"
+			 bottom="25"
+			 width="750"
+			 height="100"
+			 fontSize="32"
+			 fontWeight="bold"
+			 horizontalCenter="0"
+			 text="Waiting for 2 more players to connect..."
+			 textAlign="center"
+			 color="0xFFFFFF"
+			 textDecoration="none"
+			 verticalAlign="middle">
+		<s:filters>
+			<s:GlowFilter blurX="1.8"
+						  blurY="1.8"
+						  color="0x000000"
+						  quality="{BitmapFilterQuality.HIGH}"
+						  strength="100">
+
+			</s:GlowFilter>
+		</s:filters>
+	</s:Label>
+	<s:Label id="status2"
+			 includeIn="waiting"
+			 top="25"
+			 width="750"
+			 height="100"
+			 fontSize="32"
+			 fontWeight="bold"
+			 horizontalCenter="0"
+			 rotation="180"
+			 text="Waiting for 2 more players to connect..."
+			 textAlign="center"
+			 color="0xFFFFFF"
+			 verticalAlign="middle">
+		<s:filters>
+			<s:GlowFilter blurX="1.8"
+						  blurY="1.8"
+						  color="0x000000"
+						  quality="{BitmapFilterQuality.HIGH}"
+						  strength="100">
+
+			</s:GlowFilter>
+		</s:filters>
+	</s:Label>
+	<s:Label id="status3"
+			 includeIn="startable"
+			 bottom="25"
+			 width="750"
+			 height="100"
+			 fontSize="32"
+			 fontWeight="bold"
+			 horizontalCenter="0"
+			 text="Wait for more players or push the start button!"
+			 textAlign="center"
+			 color="0xFFFFFF"
+			 textDecoration="none"
+			 verticalAlign="middle">
+		<s:filters>
+			<s:GlowFilter blurX="1.8"
+						  blurY="1.8"
+						  color="0x000000"
+						  quality="{BitmapFilterQuality.HIGH}"
+						  strength="100">
+
+			</s:GlowFilter>
+		</s:filters>
+	</s:Label>
+	<s:Label id="status4"
+			 includeIn="startable"
+			 top="25"
+			 width="750"
+			 height="100"
+			 fontSize="32"
+			 fontWeight="bold"
+			 horizontalCenter="0"
+			 rotation="180"
+			 text="Wait for more players or push the start button!"
+			 textAlign="center"
+			 color="0xFFFFFF"
+			 verticalAlign="middle">
+		<s:filters>
+			<s:GlowFilter blurX="1.8"
+						  blurY="1.8"
+						  color="0x000000"
+						  quality="{BitmapFilterQuality.HIGH}"
+						  strength="100">
+
+			</s:GlowFilter>
+		</s:filters>
+	</s:Label>
+	<s:Button includeIn="startable"
+			  width="200"
+			  height="200"
+			  label="Go for it!"
+			  horizontalCenter="0"
+			  verticalCenter="0"
+			  click="startGame(event)"
+			  skinClass="skins.StartButtonSkin" />
+
+	<s:Button width="10" height="10" right="10" bottom="10" click="goToMapSelectionScreen()"></s:Button>
+</base:GameScreen>

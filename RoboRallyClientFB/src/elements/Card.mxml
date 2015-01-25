@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   width="100%"
+				   height="100%"
+				   creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import flash.events.MouseEvent;
+			import models.data.CardData;
+			import models.data.CardsData;
+			import views.play.PlayView3;
+			
+			public var data:CardData;
+			public var cardRegister:CardRegister;
+			private var playView:PlayView3;
+			public var locked:Boolean = false;
+			
+			[Embed(source = "assets/CardDown1.png")] private var cardDownClass:Class;
+			private var cardDown:Bitmap = new cardDownClass();
+			[Embed(source = "assets/CardLeft.png")] private var cardLeftClass:Class;
+			private var cardLeft:Bitmap = new cardLeftClass();
+			[Embed(source = "assets/CardRight.png")] private var cardRightClass:Class;
+			private var cardRight:Bitmap = new cardRightClass();
+			[Embed(source = "assets/CardTurn.png")] private var cardTurnClass:Class;
+			private var cardTurn:Bitmap = new cardTurnClass();
+			[Embed(source = "assets/CardUp1.png")] private var cardUp1Class:Class;
+			private var cardUp1:Bitmap = new cardUp1Class();
+			[Embed(source = "assets/CardUp2.png")] private var cardUp2Class:Class;
+			private var cardUp2:Bitmap = new cardUp2Class();
+			[Embed(source = "assets/CardUp3.png")] private var cardUp3Class:Class;
+			private var cardUp3:Bitmap = new cardUp3Class();
+			
+			public function setData(cardData:CardData, cardRegister:CardRegister, playView:PlayView3):void
+			{
+				this.playView = playView;
+				this.cardRegister = cardRegister;
+				data = cardData;
+				
+				
+			}
+			
+			public function removeFromRegister():void 
+			{
+				cardRegister.cardContainer.removeElement(this);
+				cardRegister.card = null;
+			}
+			
+			
+			public function glowClick():void 
+			{
+				glow.color = 0xFFFF00;
+				glow.blurX = 30;
+				glow.blurY = 30;
+				glow.alpha = 0.5;
+				tutorial.visible = true;
+				
+			}
+			
+			public function restore():void 
+			{
+				glow.alpha = 0;
+				glow.blurX = 10;
+				glow.blurY = 10;
+				glow.color = 0xff0000;
+				//tutorial.visible = false;
+			}
+
+			
+			private function init():void
+			{
+				if (data == null) return;
+				label.text = "" + data.priority + " " + data.action + " " + data.amount + "";
+				this.addEventListener(MouseEvent.CLICK, onClick);
+				if (!GlobalConstants.TUTORIAL_PLAY) tutorial.visible = false;
+				priority.source = CardsData.priorities[(data.priority / 10)];
+				switch(data.action) {
+					case "forward":
+						switch (data.amount) {
+							case 1:
+								image.source = cardUp1;
+								break;
+							case 2:
+								image.source = cardUp2;
+								break;
+							case 3:
+								image.source = cardUp3;
+								break;
+						}
+						break;
+					case "back":
+						image.source = cardDown;
+						break;
+					case "rotate":
+					switch (data.amount) {
+							case 90:
+								image.source = cardRight;
+								break;
+							case -90:
+								image.source = cardLeft;
+								break;
+							case 180:
+								image.source = cardTurn;
+								break;
+						}
+						break;
+				}
+				
+			
+			}
+			
+			private function onClick(e:MouseEvent):void
+			{
+				if (playView.lockRegisterButton.enabled && !locked) {
+					if(playView.selectedCard != null){
+						playView.selectedCard.glow.alpha = 0;
+					}
+					playView.selectedCard = this;
+					glow.blurX = 10;
+					glow.blurY = 10;
+					glow.color = 0xff0000;
+					glow.alpha = 0.7;
+					tutorial.visible = false;
+				}
+			}
+			
+			override public function toString():String 
+			{
+				return "" + data.priority + " " + data.action + " " + data.amount + "";
+			}
+			
+		]]>
+	</fx:Script>
+
+	<s:filters>
+		<s:GlowFilter alpha="0" id="glow" blurX="10" strength="5" inner="true" blurY="10">
+			
+		</s:GlowFilter>
+	</s:filters>
+	<s:Label id="label"
+			 verticalCenter="0"
+			 horizontalCenter="0"
+			 width="100%"
+			 height="100%">
+	</s:Label>
+	
+	
+	
+	<s:Image id="image" height="100%" width="100%"  >
+
+		
+	</s:Image>
+	<s:Image id="priority" height="100%" width="100%">
+		
+	</s:Image>
+	
+	<s:Label id="tutorial"
+			 verticalCenter="0"
+			 text="Click"
+			 textAlign="center"
+			 color="0xFFFF00"
+			 right="100"
+			 fontSize="30"
+			 visible="false"
+			>
+	</s:Label>
+	
+</s:BorderContainer>

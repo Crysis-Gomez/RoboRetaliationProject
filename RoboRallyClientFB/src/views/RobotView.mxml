@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		actionBarVisible="false"
+		tabBarVisible="false"
+		title="RobotSelectView"
+		creationComplete="onActivate(event)">
+
+	<fx:Script>
+		<![CDATA[
+			import connection.ConnectionEvent;
+			import connection.SocketConnection;
+			import flash.events.Event;
+			import flash.events.MouseEvent;
+			import flash.events.TransformGestureEvent;
+			import models.connection.PlayerReady;
+			import models.data.PlayerData;
+			import models.data.RobotData;
+			import spark.components.View;
+			import spark.transitions.SlideViewTransition;
+			
+			[Bindable]
+			private var robotData:RobotData;
+			private var robotIndex:int;
+			
+			protected function onActivate(event:Event):void
+			{
+				input.text = data[2];
+				
+				if(input.text == ""){
+					input.text = "Player " + data[0];
+				}
+				robotIndex = data[1];
+				
+				robotData = GameData.robots[robotIndex];
+				
+				robotImage.source = robotData.image;
+				
+				if (robotIndex == 0)
+				{
+					leftButton.enabled = false;
+				}
+				
+				if (robotIndex == GameData.robots.length - 1)
+				{
+					rightButton.enabled = false;
+				}
+				
+				this.addEventListener(TransformGestureEvent.GESTURE_SWIPE, onSwipe);
+			}
+			
+			protected function onSwipe(e:TransformGestureEvent):void
+			{
+				if (e.offsetX == 1)
+				{
+					selectLeft();
+				}
+				if (e.offsetX == -1)
+				{
+					
+					selectRight();
+				}
+			
+			}
+			
+			protected function selectLeft(event:MouseEvent = null):void
+			{
+				if (leftButton.enabled)
+				{
+					var transistion:SlideViewTransition = new SlideViewTransition();
+					transistion.direction = "right"
+					navigator.popView();
+					navigator.pushView(views.RobotView, new Array(data[0], robotIndex - 1,input.text), null, transistion);
+				}
+			}
+			
+			protected function selectRight(event:MouseEvent = null):void
+			{
+				if (rightButton.enabled)
+				{
+					navigator.popView();
+					navigator.pushView(views.RobotView, new Array(data[0], (robotIndex + 1),input.text));
+				}
+			}
+			
+			
+			private function onClick(e:MouseEvent):void 
+			{
+				input.text = "";
+			}
+		
+	
+			protected function playerReady(event:MouseEvent):void
+			{
+				var playerData:PlayerData = new PlayerData();
+				playerData.id = data[0];
+				playerData.name = input.text;
+				//TODO: future feature robots should come from a global server not from the data itself would be nice because of the fact when the RobotsData is changed both server and client should be recompiled
+				playerData.robotID = robotIndex;
+				
+				var playerReady:PlayerReady = new PlayerReady();
+				playerReady.playerdata = playerData;
+				
+				SocketConnection.getInstance().sendData(playerReady);
+				navigator.popView();
+				navigator.pushView(WaitingView, playerData);
+			}
+		]]>
+	</fx:Script>
+
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<s:Rect width="100%"
+			height="100%">
+		<s:fill>
+			<s:BitmapFill source="@Embed(source='assets/bg.jpg')">
+			</s:BitmapFill>
+		</s:fill>
+	</s:Rect>
+
+	<s:Button id="leftButton"
+			  skinClass="skins.RobotLeftButton"
+			  left="10"
+			  top="75"
+			  bottom="75"
+			  width="10%"
+			  click="selectLeft(event)" />
+	<s:Button id="rightButton"
+			  skinClass="skins.RobotRightButton"
+			  right="10"
+			  top="75"
+			  bottom="75"
+			  width="10%"
+			  click="selectRight(event)" />
+
+	<s:BorderContainer horizontalCenter="0"
+					   verticalCenter="5"
+					   width="60%"
+					   height="72%">
+		<s:backgroundFill>
+			<s:BitmapFill source="@Embed(source='assets/bg2.jpg')">
+			</s:BitmapFill>
+		</s:backgroundFill>
+		<s:Image id="robotImage"
+				
+				left="10"
+				right="10"
+				bottom="10"
+				top="10">
+
+		</s:Image>
+		<s:filters>
+			<s:BevelFilter angle="45"
+						   distance="6"
+						   highlightColor="0x898989"
+						   strength="1"
+						   highlightAlpha="1"
+						   shadowAlpha="1"
+						   blurX="5"
+						   blurY="5"
+						   quality="3">
+			</s:BevelFilter>
+		</s:filters>
+	</s:BorderContainer>
+	
+	<s:TextInput id="input" 
+        prompt="Enter text here" 
+        focusColor="green" 
+        focusThickness="5"
+		textAlign="center"
+        focusAlpha=".1"
+		horizontalCenter="0"
+		maxChars="8"
+	top="30"
+	right="50"
+	width="50%" height="10%" click="onClick(event)"
+		/>
+
+	<s:Button skinClass="skins.RobotButton"
+			  bottom="30"
+			  width="50%"
+			  height="50"
+			  label="Ready"
+			  horizontalCenter="0"
+			  click="playerReady(event)" />
+</s:View>

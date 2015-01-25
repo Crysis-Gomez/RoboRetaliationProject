@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<base:PropertiesElement xmlns:fx="http://ns.adobe.com/mxml/2009"
+						xmlns:s="library://ns.adobe.com/flex/spark"
+						xmlns:mx="library://ns.adobe.com/flex/mx"
+						xmlns:base="maps.tools.properties.base.*"
+						width="200" height="100" cornerRadius="20">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import maps.elements.base.BoardElement;
+			import maps.elements.conveyorbelt.ConveyorBelt;
+			import maps.Node;
+			import maps.tools.MapEditingTools;
+
+			import spark.events.TextOperationEvent;
+			private var conveyorBelt:ConveyorBelt;
+			
+			
+			
+			protected function dataChanged(event:TextOperationEvent):void
+			{
+				
+				conveyorBelt.id = int(data.text);
+				
+			}
+			public function setData(boardElement:ConveyorBelt):void 
+			{
+				conveyorBelt = boardElement;
+				data.text = String(conveyorBelt.id);
+				
+
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Label left="10" bottom="10" width="73" height="31" fontSize="20" text="StartID"
+			 verticalAlign="middle"/>
+	<s:TextInput id="data" right="10" bottom="11" width="75" height="30" change="dataChanged(event)"/>
+
+</base:PropertiesElement>

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:BorderContainer xmlns:fx="http://ns.adobe.com/mxml/2009"
+				   xmlns:s="library://ns.adobe.com/flex/spark"
+				   width="60"
+				   creationComplete="init()"
+				   height="60">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+
+	<fx:Script>
+		<![CDATA[
+			import core.Game;
+			import flash.display.Bitmap;
+			import flash.events.Event;
+			import flash.events.MouseEvent;
+			import flash.geom.Point;
+			import gui.player.PlayerElement;
+			import logger.Logger;
+			import models.data.CardData;
+			import models.data.CardsData;
+			
+
+	
+			
+			[Embed(source="assets/switchDirection.png")]
+			private var cardDownClass:Class;
+			private var cardDown:Bitmap = new cardDownClass();
+
+			
+
+			public function init():void 
+			{
+				image.source = cardDown;
+				addEventListener(Event.ENTER_FRAME, update);
+			}
+			
+			private function update(e:Event):void 
+			{
+				changeScale();
+			}
+			
+			
+			public function changeScale():void 
+			{
+				if (width < 3 * 40 && height < 3 * 60) {
+					if (this.height > 80) fadeOut();
+					this.width 	+= 2;
+					this.height += 2;
+				}else {
+					if ((parent as Game).contains(this)) {
+						(parent as Game).removeElement(this);
+					}
+					removeEventListener(Event.ENTER_FRAME, update);
+					
+				}
+			}
+			
+			public function fadeOut():void 
+			{
+				this.alpha -= 0.01;
+				
+			}
+	
+		]]>
+	</fx:Script>
+	<s:Label id="label"
+			 verticalCenter="0"
+			 horizontalCenter="0"
+			 width="30"
+			 height="60">
+	</s:Label>
+	
+	
+	
+	<s:Image id="image"
+			 height="100%"
+			 width="100%">
+
+	</s:Image>
+	<s:Image id="priority"
+			 height="100%"
+			 width="100%">
+
+	</s:Image>
+	
+
+	
+</s:BorderContainer>
